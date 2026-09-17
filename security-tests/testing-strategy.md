@@ -2,544 +2,465 @@
 
 ## 1. Purpose
 
-This document defines the security testing strategy for Wotmed-Net.
+This document defines the security testing strategy used to validate the application-layer active defense mechanisms of Wotmed-Net.
 
-The purpose of the strategy is to systematically evaluate the ability of the Wotmed-Net active defense middleware to detect, analyze, respond to, and record application-layer security threats.
+The strategy focuses on controlled, repeatable, and evidence-based testing of malicious application-layer requests.
 
-Testing will be performed in a controlled project environment using reproducible attack scenarios and automated testing where practical.
+The testing process validates both:
 
-The strategy focuses on validating both security behavior and operational telemetry.
+* **Detection:** whether Wotmed-Net identifies suspicious activity
+* **Defense:** whether the appropriate response is applied after detection
 
 ---
 
 ## 2. Testing Scope
 
-The security testing scope includes the following application-layer attack categories:
+The current automated security testing scope covers:
 
 * SQL Injection
 * Cross-Site Scripting (XSS)
 * Path Traversal
-* Brute-Force Authentication Attempts
+* Controlled Brute-Force activity
 
-The testing process will evaluate:
+The tests are executed against the Wotmed-Net application through the configured authentication endpoint.
 
-* Request inspection
-* Threat detection
-* Threat classification
-* Threat scoring
-* Defense decisions
-* Blocking behavior
-* Response latency
-* Telemetry generation
-* IP reputation updates
-* Security event persistence
-
-Testing will be limited to the authorized Wotmed-Net development/test environment.
-
----
-
-## 3. Test Environment
-
-Security tests will be executed against the Wotmed-Net controlled test environment.
-
-The environment may contain the following components:
+### Current Target
 
 ```text
-Security Test Scripts
-        |
-        v
-   Test Client
-        |
-        v
-Wotmed-Net Middleware
-        |
-        +----------------+
-        |                |
-        v                v
- Threat Detection     Defense Engine
-        |                |
-        +-------+--------+
-                |
-                v
-          Telemetry Layer
-                |
-                v
-          PostgreSQL /
-             Supabase
+Target   : http://localhost:3000
+Endpoint : /api/v1/auth/login
 ```
 
-The exact host, port, endpoints, database configuration, and deployment method will be documented according to the active project configuration.
+Testing is performed in a controlled local development environment.
 
 ---
 
-## 4. Testing Objectives
+## 3. Testing Objectives
 
-The primary testing objectives are:
+The testing strategy has the following objectives:
 
-### 4.1 Detection
-
-Determine whether malicious requests are correctly identified.
-
-### 4.2 Classification
-
-Determine whether detected requests are assigned to the appropriate attack category.
-
-### 4.3 Threat Scoring
-
-Verify that detected activity contributes correctly to the configured threat score.
-
-### 4.4 Defense Response
-
-Verify that Wotmed-Net performs the expected response after detecting suspicious or malicious activity.
-
-Possible responses may include:
-
-* Allow
-* Monitor
-* Detect
-* Tarpit
-* Block
-
-The actual response will be compared with the configured project behavior.
-
-### 4.5 Telemetry
-
-Verify that security events are recorded correctly and can be consumed by the monitoring/dashboard layer.
-
-### 4.6 Performance
-
-Measure the time required to process security-related requests and generate the corresponding defense response.
+1. Verify that known malicious request patterns are detected.
+2. Verify that detected attacks trigger the expected defense mechanism.
+3. Validate blocking and containment behavior.
+4. Validate threshold-based brute-force detection.
+5. Confirm that legitimate activity below the tested threshold is not unnecessarily blocked.
+6. Measure request processing reliability.
+7. Measure response-time behavior.
+8. Generate reproducible security evidence.
+9. Produce machine-readable test results for further analysis.
 
 ---
 
-## 5. Attack Categories
+## 4. Test Environment
 
-### 5.1 SQL Injection
+| Component                   | Configuration           |
+| --------------------------- | ----------------------- |
+| Application                 | Wotmed-Net              |
+| Environment                 | Local development       |
+| Target                      | `http://localhost:3000` |
+| Test Endpoint               | `/api/v1/auth/login`    |
+| Testing Language            | Python                  |
+| Package/Environment Manager | `uv`                    |
+| Timeout                     | 5 seconds               |
+| Test Runner                 | `security_test.py`      |
 
-The SQL Injection test will generate controlled requests containing representative SQL injection patterns.
-
-The test will determine whether Wotmed-Net:
-
-1. Inspects the request.
-2. Detects suspicious SQL patterns.
-3. Assigns the appropriate threat category.
-4. Updates the threat score when applicable.
-5. Applies the expected defense response.
-6. Generates telemetry.
-
----
-
-### 5.2 Cross-Site Scripting
-
-The XSS test will generate controlled requests containing representative cross-site scripting patterns.
-
-The test will determine whether Wotmed-Net:
-
-1. Inspects the request.
-2. Detects suspicious script-related input.
-3. Classifies the request as XSS-related when appropriate.
-4. Applies the expected defense response.
-5. Generates telemetry.
+The test framework communicates with the running Wotmed-Net application using HTTP requests.
 
 ---
 
-### 5.3 Path Traversal
+## 5. Testing Methodology
 
-The Path Traversal test will generate controlled requests containing representative traversal patterns.
-
-The test will determine whether Wotmed-Net:
-
-1. Inspects the requested path.
-2. Identifies traversal indicators.
-3. Classifies the request appropriately.
-4. Applies the expected defense response.
-5. Generates telemetry.
-
----
-
-### 5.4 Brute-Force Authentication
-
-The brute-force test will simulate repeated authentication attempts within the controlled test environment.
-
-The test will determine whether repeated activity:
-
-1. Is counted correctly.
-2. Contributes to the threat score when configured.
-3. Triggers the appropriate defense threshold.
-4. Results in blocking or another configured mitigation.
-5. Generates the expected telemetry.
-
----
-
-## 6. Testing Methodology
-
-The security testing process will use the following methodology:
+The testing methodology follows a controlled attack-and-validation process:
 
 ```text
-1. Prepare Test Environment
-          |
-          v
-2. Define Test Case
-          |
-          v
-3. Generate Controlled Request
-          |
-          v
-4. Send Request to Wotmed-Net
-          |
-          v
-5. Observe Middleware Response
-          |
-          v
-6. Inspect Threat/Defense Data
-          |
-          v
-7. Verify Telemetry
-          |
-          v
-8. Record Test Result
-          |
-          v
-9. Calculate Security Metrics
+1. Select Test Case
+        ↓
+2. Generate Controlled Payload
+        ↓
+3. Send HTTP Request
+        ↓
+4. Wotmed-Net Inspects Request
+        ↓
+5. Detection Decision
+        ↓
+6. Defense Decision
+        ↓
+7. Observe Application Response
+        ↓
+8. Compare Expected vs Observed Behavior
+        ↓
+9. Record Result
+        ↓
+10. Generate Report
 ```
 
-Each test should be reproducible using the same configuration and test inputs.
+Each test case has a defined expected behavior.
+
+A test passes when the observed security behavior satisfies the expected behavior defined for that scenario.
+
+---
+
+## 6. Test Categories
+
+### 6.1 SQL Injection
+
+SQL Injection tests evaluate whether suspicious SQL-related authentication input is detected.
+
+Current scenarios:
+
+* SQLi Authentication Bypass
+* SQLi UNION Probe
+
+Expected defense:
+
+```text
+BLOCK_AND_REDIRECT_HONEYPOT
+```
+
+---
+
+### 6.2 Cross-Site Scripting
+
+XSS tests evaluate whether script-related payloads are identified.
+
+Current scenarios:
+
+* Basic Script Injection
+* Image Event Handler Injection
+
+Expected defense:
+
+```text
+AUTONOMOUS_DYNAMIC_TARPIT
+```
+
+The tarpit mechanism is used to slow and contain suspicious activity.
+
+---
+
+### 6.3 Path Traversal
+
+Path Traversal tests evaluate whether attempts to access files through traversal patterns are detected.
+
+Current scenarios:
+
+* Basic Path Traversal
+* Nested Path Traversal
+
+Expected defense:
+
+```text
+BLOCK_AND_REDIRECT_HONEYPOT
+```
+
+---
+
+### 6.4 Controlled Brute Force
+
+The brute-force test evaluates threshold-based behavioral detection.
+
+Five controlled authentication attempts are generated.
+
+Expected behavior:
+
+```text
+Attempts 1-4 → Below Threshold → ALLOW
+Attempt 5    → Threshold Reached → TARPIT
+```
+
+This validates that repeated suspicious activity eventually triggers a defense mechanism.
 
 ---
 
 ## 7. Test Case Structure
 
-Every security test case should contain the following information:
+Each automated test records information including:
 
-| Field                   | Description                               |
-| ----------------------- | ----------------------------------------- |
-| Test ID                 | Unique identifier                         |
-| Attack Type             | SQLi, XSS, Path Traversal, or Brute Force |
-| Target                  | Endpoint or application component         |
-| Input                   | Controlled test request                   |
-| Expected Detection      | Whether detection is expected             |
-| Expected Classification | Expected threat category                  |
-| Expected Defense        | Expected mitigation                       |
-| Expected Telemetry      | Expected logging behavior                 |
-| Actual Result           | Observed behavior                         |
-| Response Time           | Measured processing time                  |
-| Status                  | PASS / FAIL                               |
-| Evidence                | Supporting logs or screenshots            |
+| Field           | Purpose                         |
+| --------------- | ------------------------------- |
+| Test Name       | Identifies the scenario         |
+| Category        | Attack classification           |
+| Payload         | Controlled test input           |
+| HTTP Status     | Application response status     |
+| Detection       | Whether the attack was detected |
+| Defense         | Selected defense mechanism      |
+| Blocking        | Blocking or containment result  |
+| Response Time   | Request processing duration     |
+| Expected Result | Expected security behavior      |
+| Actual Result   | Observed security behavior      |
+| Test Status     | PASS or FAIL                    |
+
+This structure allows the framework to distinguish application response status from security decision status.
 
 ---
 
-## 8. Expected Security Behavior
+## 8. Detection and Defense Evaluation
 
-A security test is successful when the observed behavior matches the configured Wotmed-Net security policy.
+Detection and defense are evaluated separately.
 
-For a malicious request, the expected flow is:
+For example:
 
 ```text
-Malicious Request
-       |
-       v
-Request Inspection
-       |
-       v
-Threat Detection
-       |
-       v
-Threat Classification
-       |
-       v
-Threat Score Update
-       |
-       v
-Defense Decision
-       |
-       +-------> Allow / Monitor
-       |
-       +-------> Tarpit
-       |
-       +-------> Block
-       |
-       v
-Telemetry Generation
+Detection: DETECTED
+Defense:   AUTONOMOUS_DYNAMIC_TARPIT
+Blocking:  TARPITTED
+Result:    TEST_PASSED
 ```
 
-The exact defense action depends on the implemented Wotmed-Net configuration and threat thresholds.
+This distinction is important because an HTTP status code alone does not determine whether Wotmed-Net detected an attack.
+
+For example, an XSS request may return HTTP `200` while still being detected and tarpitted by the defense layer.
 
 ---
 
-## 9. Pass / Fail Criteria
+## 9. Pass and Fail Criteria
 
 ### PASS
 
-A test will be considered PASS when the system demonstrates the expected behavior defined by the test case.
+A test is marked as `PASS` when the observed behavior matches the expected security behavior.
 
-Examples include:
+Examples:
 
-* The malicious request is detected when detection is expected.
-* The correct attack category is identified.
-* The expected threat score change occurs.
-* The expected defense response is applied.
-* Telemetry is generated correctly.
-* The recorded result is consistent with the configured security policy.
+```text
+Expected: DETECTED + BLOCKED
+Observed: DETECTED + BLOCKED
+Result:   PASS
+```
+
+or:
+
+```text
+Expected: NOT_DETECTED + ALLOW
+Observed: NOT_DETECTED + ALLOW
+Result:   PASS
+```
 
 ### FAIL
 
-A test will be considered FAIL when one or more critical expected behaviors are not achieved.
+A test is marked as `FAIL` when the observed behavior does not satisfy the expected behavior.
 
 Examples include:
 
-* A malicious request is not detected when detection is required.
-* Incorrect attack classification occurs.
-* The expected defense action is not applied.
-* Threat information is not updated correctly.
-* Required telemetry is missing.
-* The middleware produces an unexpected security response.
-
-A failure will be documented rather than hidden or manually corrected in the results.
+* Expected attack detection but no detection occurred
+* Expected blocking but malicious activity was allowed
+* Expected threshold detection but the threshold was not triggered
+* Request processing failed unexpectedly
 
 ---
 
-## 10. Security Metrics
+## 10. Test Isolation and Safety
 
-The testing process will calculate measurable security metrics.
+Security tests are performed under controlled conditions.
 
-### 10.1 Detection Rate
+The testing strategy follows these principles:
 
-Detection Rate measures the percentage of malicious test requests correctly detected.
+### Local Testing
 
-```text
-Detection Rate =
-Correctly Detected Malicious Requests
-------------------------------------- × 100
-Total Malicious Test Requests
-```
+Tests target the local Wotmed-Net instance.
 
-### 10.2 False Positive Ratio
+### Controlled Payloads
 
-False Positive Ratio measures legitimate requests incorrectly identified as malicious.
+Only predefined test payloads are used.
 
-```text
-False Positive Ratio =
-Legitimate Requests Incorrectly Detected
----------------------------------------- × 100
-Total Legitimate Requests
-```
+### Non-Destructive Execution
 
-### 10.3 Response Latency
+The tests are designed to validate defensive behavior without intentionally damaging application data.
 
-Response latency measures the time between submitting a test request and receiving the corresponding application/security response.
+### Repeatability
 
-```text
-Response Latency =
-Response Timestamp - Request Timestamp
-```
+Automated tests can be executed repeatedly using the same test definitions.
 
-Latency should be recorded consistently using the same measurement method.
+### Limited Scope
 
-### 10.4 Blocking Effectiveness
-
-Blocking effectiveness measures whether requests that satisfy the configured blocking conditions are actually prevented.
-
-```text
-Blocking Effectiveness =
-Successfully Blocked Qualifying Requests
----------------------------------------- × 100
-Total Qualifying Malicious Requests
-```
-
-### 10.5 Telemetry Success Rate
-
-Telemetry success rate measures whether expected security events are successfully recorded.
-
-```text
-Telemetry Success Rate =
-Successfully Recorded Security Events
-------------------------------------- × 100
-Expected Security Events
-```
+The current suite targets specific application-layer scenarios rather than attempting unrestricted penetration testing.
 
 ---
 
-## 11. Evidence Collection
+## 11. Brute-Force Threshold Strategy
 
-Every important security test should produce supporting evidence.
+The brute-force scenario is intentionally different from the other attack categories.
 
-Evidence may include:
+The objective is not to detect every individual request.
 
-* HTTP request and response information
-* Middleware logs
-* Threat score information
-* IP reputation records
-* Database records
-* Telemetry records
-* Dashboard screenshots
-* Test script output
-* Response timing measurements
-
-Evidence will be associated with the corresponding test ID whenever possible.
-
----
-
-## 12. Automated Testing Strategy
-
-Security testing should be automated where practical.
-
-The automated testing layer will be responsible for:
-
-* Generating controlled requests
-* Executing predefined test cases
-* Collecting HTTP responses
-* Measuring response latency
-* Recording detection outcomes
-* Comparing actual and expected results
-* Producing structured test output
-
-Python and/or Bash may be used for test automation depending on the final implementation.
-
-The automation must operate only against authorized project environments.
-
----
-
-## 13. Test Isolation and Safety
-
-Security testing must not be performed against unauthorized systems.
-
-The testing environment should be isolated from production systems unless explicit authorization and appropriate safeguards are available.
-
-Tests should avoid:
-
-* Destructive database operations
-* Permanent data modification
-* Unauthorized external targets
-* Real credential attacks
-* Uncontrolled traffic generation
-* Denial-of-service behavior
-
-The objective is to validate the defense mechanism, not to damage the target system.
-
----
-
-## 14. Test Execution Order
-
-The recommended execution order is:
+Instead, it validates behavioral escalation.
 
 ```text
-Phase 1
-Environment Verification
-        |
-        v
-Phase 2
-Baseline / Legitimate Requests
-        |
-        v
-Phase 3
-SQL Injection Testing
-        |
-        v
-Phase 4
-XSS Testing
-        |
-        v
-Phase 5
-Path Traversal Testing
-        |
-        v
-Phase 6
-Brute-Force Testing
-        |
-        v
-Phase 7
-Defense Validation
-        |
-        v
-Phase 8
-Telemetry Verification
-        |
-        v
-Phase 9
-Metrics Calculation
-        |
-        v
-Phase 10
-Final Security Report
+Attempt 1
+    ↓
+No threshold reached
+    ↓
+ALLOW
+
+Attempt 2
+    ↓
+No threshold reached
+    ↓
+ALLOW
+
+Attempt 3
+    ↓
+No threshold reached
+    ↓
+ALLOW
+
+Attempt 4
+    ↓
+No threshold reached
+    ↓
+ALLOW
+
+Attempt 5
+    ↓
+Threshold reached
+    ↓
+DETECTED
+    ↓
+TARPITTED
+```
+
+This confirms that the defense system can change its response after repeated suspicious activity.
+
+---
+
+## 12. Test Execution Order
+
+The current suite follows this order:
+
+```text
+1. SQL Injection
+2. Cross-Site Scripting
+3. Path Traversal
+4. Controlled Brute Force
+```
+
+This provides a simple and repeatable execution sequence for the current test suite.
+
+---
+
+## 13. Security Metrics
+
+The testing framework currently records the following metrics:
+
+### Test Pass Rate
+
+Number of passed tests divided by total executed tests.
+
+For the latest execution:
+
+```text
+11 / 11 = 100%
+```
+
+### Detection Rate
+
+Number of detected requests divided by total tested requests.
+
+For the latest execution:
+
+```text
+7 / 11 = 63.64%
+```
+
+This metric describes only the behavior of the current test suite. It is not a general security-effectiveness score.
+
+### Request Success Rate
+
+Number of successfully processed requests divided by total requests.
+
+Latest execution:
+
+```text
+11 / 11 = 100%
+```
+
+### Average Response Time
+
+Latest execution:
+
+```text
+0.6768 seconds
 ```
 
 ---
 
-## 15. Test Completion Criteria
+## 14. Current Validation Results
 
-Security testing will be considered complete when:
+The latest automated execution produced:
 
-* All defined attack categories have been tested.
-* Automated tests execute reproducibly.
-* Expected defense behavior has been evaluated.
-* Detection results have been recorded.
-* Response latency has been measured.
-* Telemetry has been verified.
-* False-positive testing has been performed.
-* Blocking behavior has been evaluated.
-* Test evidence has been collected.
-* Final results have been documented.
+| Category       |  Tests | Detected | Passed | Failed |
+| -------------- | -----: | -------: | -----: | -----: |
+| SQL Injection  |      2 |        2 |      2 |      0 |
+| XSS            |      2 |        2 |      2 |      0 |
+| Path Traversal |      2 |        2 |      2 |      0 |
+| Brute Force    |      5 |        1 |      5 |      0 |
+| **Total**      | **11** |    **7** | **11** |  **0** |
+
+Overall:
+
+```text
+Total Tests       : 11
+Passed            : 11
+Failed            : 0
+Request Failures  : 0
+Detection         : 7
+Success Rate      : 100%
+```
 
 ---
 
-## 16. Relationship With Other Security Testing Documents
+## 15. Evidence Collection
 
-This strategy document defines the overall testing approach.
+Security testing evidence is collected from:
 
-The remaining security testing documents have the following responsibilities:
+* Automated console output
+* JSON test results
+* CSV test results
+* Detection decisions
+* Defense decisions
+* Blocking/containment results
+* HTTP response status
+* Response-time measurements
+
+Generated reports:
 
 ```text
-testing-strategy.md
-        |
-        +----> Defines HOW testing is performed
-        |
-        v
-attack-scenarios.md
-        |
-        +----> Defines WHAT attacks are tested
-        |
-        v
-automated-testing.md
-        |
-        +----> Defines HOW tests are automated
-        |
-        v
-defense-validation.md
-        |
-        +----> Defines HOW defense behavior is verified
-        |
-        v
-test-results.md
-        |
-        +----> Records ACTUAL test results
+security-tests/results/security_test_results.json
+security-tests/results/security_test_results.csv
 ```
 
-These documents should remain consistent with the actual Wotmed-Net implementation.
+These files provide persistent evidence of the executed test cases.
 
 ---
 
-## 17. Strategy Summary
+## 16. Legitimate Traffic Consideration
 
-The Wotmed-Net security testing strategy combines controlled attack simulation, automated request generation, defense validation, telemetry verification, and measurable security metrics.
+The testing strategy distinguishes between malicious and legitimate traffic.
 
-The objective is not simply to demonstrate that an attack request receives a response.
+The current brute-force test provides a limited example of this principle by allowing attempts that remain below the configured threshold.
 
-The objective is to provide measurable evidence that Wotmed-Net can:
+However, a comprehensive false-positive measurement requires a larger legitimate-traffic dataset.
 
-```text
-Detect
-  ↓
-Classify
-  ↓
-Score
-  ↓
-Respond
-  ↓
-Block when required
-  ↓
-Record telemetry
-  ↓
-Support security analysis
-```
+Therefore, the current 11-test execution does **not** claim a formal false-positive rate.
 
-All final claims about security effectiveness will be based on observed test results rather than assumptions.
+Future testing should include:
+
+* Normal login requests
+* Normal API requests
+* Common user input
+* Repeated legitimate requests
+* Expected application navigation patterns
+
+---
+
+## 17. Telemetry and Logging Validation
+
+The security test framework records detection and defense decisions as part of the test results.
+
+However, independent end-to-end telemetry persistence is not claimed as fully validated by the current 11-test execution.
+
+A future telemetry validation phase should verify:
+
+1. Attack event generation
+2. Event persistence
+3. Correct timestamp
+4. Source identification
