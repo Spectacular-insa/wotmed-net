@@ -1,206 +1,215 @@
-# Security Testing Module
-**Lead:** Wubalem Gashaw Abera
-- Automated attack simulation scripts (SQLi, XSS, Path Traversal)
-- Defense validation and efficacy scoring
 # Wotmed-Net Security Testing
 
-## 1. Overview
+## Overview
 
-The `security-tests` component is responsible for validating the
-security effectiveness of the Wotmed-Net active defense middleware.
+The `security-tests/` module provides an automated security testing framework for validating the application-layer active defense mechanisms of Wotmed-Net.
 
-It provides controlled and automated security testing scenarios
-designed to simulate application-layer attacks against the
-Wotmed-Net protected environment.
+The framework sends controlled security test requests to the application and evaluates:
 
-The primary goal is to verify that Wotmed-Net can detect, analyze,
-respond to, and generate telemetry for simulated malicious activity.
+* Attack detection
+* Threat response
+* Defense action
+* Blocking or containment
+* Request reliability
+* Response time
+* Expected versus observed behavior
 
----
-
-## 2. Testing Objectives
-
-The security testing process has the following objectives:
-
-1. Validate threat detection capabilities.
-2. Validate active defense mechanisms.
-3. Verify malicious request handling.
-4. Measure detection effectiveness.
-5. Measure response latency.
-6. Identify false-positive detections.
-7. Verify threat telemetry generation.
-8. Verify security events are available to the monitoring system.
-9. Evaluate the effectiveness of IP-based threat response.
-10. Produce measurable security testing results.
+The current automated test suite covers SQL Injection, Cross-Site Scripting, Path Traversal, and controlled Brute-Force scenarios.
 
 ---
 
-## 3. Automated Exploit Probing
+## Testing Objectives
 
-The security testing framework will use script-based testing tools,
-primarily Python and/or Bash, to generate controlled attack requests.
+The security testing module is designed to:
 
-The framework will contain separate test scenarios for:
-
-- SQL Injection
-- Cross-Site Scripting (XSS)
-- Path Traversal
-- Brute-Force Authentication
-
-Each scenario will generate controlled requests against the
-Wotmed-Net test environment.
-
-The tests are intended only for the project's controlled environment.
+1. Validate application-layer attack detection.
+2. Verify that the expected defense mechanism is triggered.
+3. Validate blocking and containment behavior.
+4. Verify brute-force threshold detection.
+5. Measure request and response behavior.
+6. Generate machine-readable security test reports.
+7. Provide evidence for security validation and final project presentation.
 
 ---
 
-## 4. Attack Testing Workflow
+## Current Test Coverage
 
-Each security test follows a common workflow:
+The current automated framework covers four major categories:
+
+| Category             | Test Cases | Purpose                                   |
+| -------------------- | ---------: | ----------------------------------------- |
+| SQL Injection        |          2 | Validate SQLi detection and blocking      |
+| Cross-Site Scripting |          2 | Validate XSS detection and containment    |
+| Path Traversal       |          2 | Validate traversal detection and blocking |
+| Brute Force          |          5 | Validate threshold-based detection        |
+
+**Total: 11 controlled test cases**
+
+---
+
+## Testing Workflow
+
+The testing process follows this workflow:
 
 ```text
-Test Configuration
+Security Test Case
        ↓
-Attack Request Generation
+Controlled Payload
        ↓
-Wotmed-Net Middleware
+HTTP Request
        ↓
-Threat Analysis
+Wotmed-Net Inspection
+       ↓
+Threat Detection
        ↓
 Defense Decision
        ↓
-Allow / Detect / Block
+Block / Tarpit / Allow
        ↓
-Telemetry Generation
+Result Evaluation
        ↓
-Result Collection
-       ↓
-Security Metrics
-5. Security Test Categories
-5.1 SQL Injection
+JSON + CSV Report
+```
 
-The SQL injection test validates whether Wotmed-Net can identify
-requests containing SQL injection patterns.
+---
 
-The test verifies:
+## Test Environment
 
-Request inspection
-SQL injection detection
-Threat classification
-Threat scoring
-Defense response
-Telemetry generation
-5.2 Cross-Site Scripting (XSS)
+Current test configuration:
 
-The XSS test validates whether Wotmed-Net can identify requests
-containing common cross-site scripting patterns.
+```text
+Target   : http://localhost:3000
+Endpoint : /api/v1/auth/login
+Timeout  : 5 seconds
+Runner   : Python + uv
+```
 
-The test verifies:
+The tests are executed against a locally running Wotmed-Net instance.
 
-Payload inspection
-XSS detection
-Threat classification
-Defense response
-Telemetry generation
-5.3 Path Traversal
+---
 
-The path traversal test validates whether Wotmed-Net can detect
-requests attempting unauthorized filesystem path traversal.
+## Running the Tests
 
-The test verifies:
+Navigate to the security testing scripts directory:
 
-Request path inspection
-Path traversal detection
-Threat classification
-Defense response
-Telemetry generation
-5.4 Brute-Force Authentication
+```powershell
+cd C:\Users\hp\Desktop\INSA\wotmed-net\security-tests\scripts
+```
 
-The brute-force test validates the system's response to repeated
-authentication attempts.
+Run the automated test suite:
 
-The test verifies:
+```powershell
+uv run python security_test.py
+```
 
-Repeated request handling
-Threat accumulation
-Threshold-based response
-Blocking behavior
-Security telemetry
-6. Defense Validation
+The framework executes all configured test cases and prints the results to the console.
 
-After each attack simulation, the resulting behavior of Wotmed-Net
-will be evaluated.
+---
 
-The evaluation will determine whether the middleware:
+## Current Test Results
 
-Detected the simulated attack
-Correctly classified the threat
-Applied the expected defense action
-Generated the expected telemetry
-Updated the relevant threat information
-Blocked the attacker when the configured threshold was reached
-7. Security Metrics
+The latest completed execution produced:
 
-The security testing process will collect measurable results.
+| Metric                 |         Result |
+| ---------------------- | -------------: |
+| Total Tests            |             11 |
+| Passed                 |             11 |
+| Failed                 |              0 |
+| Detected               |              7 |
+| Request Failures       |              0 |
+| Request Success Rate   |           100% |
+| Overall Detection Rate |         63.64% |
+| Average Response Time  | 0.6768 seconds |
 
-Detection Rate
+### Category Results
 
-Measures the percentage of simulated malicious requests correctly
-detected by Wotmed-Net.
+| Category             |  Tests | Detected | Passed | Failed |
+| -------------------- | -----: | -------: | -----: | -----: |
+| SQL Injection        |      2 |        2 |      2 |      0 |
+| Cross-Site Scripting |      2 |        2 |      2 |      0 |
+| Path Traversal       |      2 |        2 |      2 |      0 |
+| Brute Force          |      5 |        1 |      5 |      0 |
+| **Total**            | **11** |    **7** | **11** |  **0** |
 
-Detection Rate =
-Detected Attacks / Total Simulated Attacks × 100
-False Positive Ratio
+### Result
 
-Measures legitimate requests incorrectly identified as malicious.
+**Overall Test Suite: PASSED**
 
-False Positive Ratio =
-False Positive Requests / Total Legitimate Requests × 100
-Response Latency
+The 63.64% detection figure represents the percentage of requests detected within this specific test suite. It is not a general security-effectiveness score.
 
-Measures the time between attack request submission and the
-corresponding defense response.
+---
 
-The latency will be recorded for relevant test scenarios.
+## Defense Validation
 
-Blocking Effectiveness
+The tests demonstrated multiple Wotmed-Net defense responses.
 
-Measures whether malicious activity is blocked when the configured
-defense conditions are satisfied.
+### SQL Injection
 
-8. Test Result Reporting
+```text
+Detection: DETECTED
+Defense:   BLOCK_AND_REDIRECT_HONEYPOT
+Blocking:  BLOCKED
+```
 
-Each test execution should produce a structured result containing,
-where applicable:
+Both SQL Injection scenarios were detected and blocked.
 
-Test name
-Attack category
-Target endpoint
-Request status
-Detection result
-Defense action
-Response time
-Threat score
-Blocking status
-Telemetry status
-Test timestamp
+### Cross-Site Scripting
 
-Test results will be used to produce the final security evaluation.
+```text
+Detection: DETECTED
+Defense:   AUTONOMOUS_DYNAMIC_TARPIT
+Blocking:  TARPITTED
+```
 
-9. Testing Principles
+Both XSS scenarios were detected and contained using the dynamic tarpit mechanism.
 
-Security testing will follow these principles:
+### Path Traversal
 
-Controlled testing
-Reproducible test scenarios
-Automated execution where practical
-Measurable results
-Clear separation between legitimate and malicious traffic
-No testing against unauthorized external systems
-10. Planned Security Testing Components
+```text
+Detection: DETECTED
+Defense:   BLOCK_AND_REDIRECT_HONEYPOT
+Blocking:  BLOCKED
+```
 
-The security testing implementation will be developed incrementally:
+Both Path Traversal scenarios were detected and blocked.
 
+### Brute Force
+
+The controlled brute-force test verified threshold behavior.
+
+```text
+Attempts 1-4 : NOT_DETECTED → ALLOW
+Attempt 5    : DETECTED → AUTONOMOUS_DYNAMIC_TARPIT
+```
+
+All five brute-force test steps passed because the expected threshold behavior was observed.
+
+---
+
+## Test Reports
+
+The framework generates machine-readable results in:
+
+```text
+security-tests/results/security_test_results.json
+security-tests/results/security_test_results.csv
+```
+
+### JSON
+
+The JSON report is intended for structured programmatic analysis and future automation.
+
+### CSV
+
+The CSV report provides tabular results suitable for spreadsheet analysis, filtering, and presentation preparation.
+
+---
+
+## Documentation
+
+The security testing module contains the following documentation:
+
+```text
 security-tests/
 │
 ├── README.md
@@ -209,28 +218,132 @@ security-tests/
 ├── automated-testing.md
 ├── defense-validation.md
 └── test-results.md
+```
 
-Implementation details will be documented as each testing component
-is developed.
+### Document Responsibilities
 
-11. Relationship to Wotmed-Net
+| Document                | Purpose                                  |
+| ----------------------- | ---------------------------------------- |
+| `README.md`             | Module overview and execution guide      |
+| `testing-strategy.md`   | Overall testing methodology              |
+| `attack-scenarios.md`   | Attack scenario definitions              |
+| `automated-testing.md`  | Automated framework design and execution |
+| `defense-validation.md` | Defense behavior validation              |
+| `test-results.md`       | Detailed execution results               |
 
-The security testing framework does not replace the Wotmed-Net
-defense engine.
+---
 
-Instead, it acts as a controlled validation layer:
+## Testing Principles
 
-Security Tests
-      ↓
-Simulated Attacks
-      ↓
-Wotmed-Net
-      ↓
-Defense Mechanisms
-      ↓
-Telemetry
-      ↓
-Security Evaluation
+All security testing follows these principles:
 
-The final objective is to provide measurable evidence that the
-Wotmed-Net active defense mechanisms operate as designed.
+### Controlled Testing
+
+Only predefined and controlled security payloads are used.
+
+### Non-Destructive Testing
+
+Testing is performed against the local development environment and is designed to avoid destructive actions.
+
+### Reproducibility
+
+Test cases are automated so that the same scenarios can be executed repeatedly.
+
+### Evidence-Based Validation
+
+A test result is evaluated using observed detection, defense, and blocking behavior rather than relying only on HTTP status codes.
+
+### Separation of Detection and Defense
+
+Detection and defense are recorded as separate results.
+
+For example:
+
+```text
+Detection → DETECTED
+Defense   → AUTONOMOUS_DYNAMIC_TARPIT
+Blocking  → TARPITTED
+```
+
+This provides a clearer representation of how Wotmed-Net responds to suspicious activity.
+
+---
+
+## Current Limitations
+
+The current test suite is intentionally limited to four attack categories.
+
+It does not yet provide complete coverage for:
+
+* Command Injection
+* CSRF
+* Authentication bypass variations
+* Authorization vulnerabilities
+* Session security
+* API abuse
+* Large-scale rate-limit testing
+* Comprehensive legitimate-traffic testing
+* Formal false-positive measurement
+* Production-scale load testing
+* Independent telemetry persistence validation
+* External IP reputation validation
+
+These areas can be added in future iterations.
+
+---
+
+## Future Improvements
+
+Planned improvements include:
+
+1. Expand attack payload coverage.
+2. Add legitimate traffic baseline tests.
+3. Add false-positive and false-negative measurements.
+4. Add API security test cases.
+5. Add authentication and authorization testing.
+6. Add session security testing.
+7. Add rate-limit and abuse testing.
+8. Integrate security tests into CI/CD.
+9. Expand machine-readable reporting.
+10. Add historical test-result comparison.
+11. Validate telemetry persistence independently.
+12. Add controlled performance and load testing.
+
+---
+
+## Security Testing Status
+
+```text
+==================================================
+WOTMED-NET SECURITY TESTING
+==================================================
+
+Automated Framework       : IMPLEMENTED
+SQL Injection Tests       : PASS
+XSS Tests                 : PASS
+Path Traversal Tests      : PASS
+Brute Force Tests         : PASS
+
+Total Tests               : 11
+Passed                    : 11
+Failed                    : 0
+Detection                : 7 / 11
+Request Success           : 100%
+
+Overall Test Status       : PASSED
+==================================================
+```
+
+---
+
+## Related Documentation
+
+For detailed information, see:
+
+* `testing-strategy.md`
+* `attack-scenarios.md`
+* `automated-testing.md`
+* `defense-validation.md`
+* `test-results.md`
+
+The security testing module provides the evidence and validation layer for the Wotmed-Net active defense system.

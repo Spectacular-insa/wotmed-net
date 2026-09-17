@@ -1,523 +1,558 @@
-# Wotmed-Net Attack Scenarios
+# Wotmed-Net Security Attack Scenarios
 
 ## 1. Overview
 
-This document defines the controlled application-layer attack scenarios used to evaluate the Wotmed-Net active defense middleware.
+This document defines the controlled security attack scenarios used to validate the Wotmed-Net application-layer active defense mechanisms.
 
-The scenarios are designed for authorized testing within the Wotmed-Net development or test environment.
+The scenarios are designed for:
 
-Each scenario defines:
+* Automated security testing
+* Defense validation
+* Repeatable execution
+* Evidence collection
+* Final project demonstration
 
-* Attack category
-* Test objective
-* Test conditions
-* Controlled request examples
-* Expected detection
-* Expected defense behavior
-* Expected telemetry
-* Pass/fail criteria
-
-The scenarios are intentionally non-destructive and are designed to validate security controls rather than compromise or damage the test environment.
+All scenarios are executed against the local Wotmed-Net test environment.
 
 ---
 
-# 2. Scenario Identification
+## 2. Test Environment
 
-| ID      | Attack Category            | Priority |
-| ------- | -------------------------- | -------- |
-| ATK-001 | SQL Injection              | High     |
-| ATK-002 | Cross-Site Scripting (XSS) | High     |
-| ATK-003 | Path Traversal             | High     |
-| ATK-004 | Brute-Force Authentication | High     |
-
----
-
-# 3. ATK-001 — SQL Injection
-
-## 3.1 Objective
-
-Determine whether Wotmed-Net detects suspicious SQL injection patterns contained in HTTP requests.
-
-## 3.2 Target
-
-The test should target an authorized Wotmed-Net-protected application endpoint that accepts user-controlled parameters.
-
-Example:
-
-```text
-GET /api/test?search=<controlled-payload>
-```
-
-The exact endpoint must be replaced with an endpoint that actually exists in the Wotmed-Net test environment.
-
-## 3.3 Controlled Test Inputs
-
-Representative non-destructive SQL injection indicators may include:
-
-```text
-' OR '1'='1
-```
-
-```text
-' UNION SELECT NULL--
-```
-
-```text
-admin'--
-```
-
-These inputs are used only as detection probes.
-
-They should not be used to modify, delete, or extract real data.
-
-## 3.4 Expected Detection
-
-Wotmed-Net should identify requests containing configured SQL injection indicators.
-
-Expected classification:
-
-```text
-Attack Type: SQL Injection
-Detection: TRUE
-```
-
-## 3.5 Expected Defense
-
-The actual response must follow the configured Wotmed-Net defense policy.
-
-Possible outcomes include:
-
-```text
-Detection
-    ↓
-Threat Score Update
-    ↓
-Defense Decision
-    ↓
-Monitor / Tarpit / Block
-```
-
-The test must record the actual response instead of assuming that every SQL injection request will immediately be blocked.
-
-## 3.6 Expected Telemetry
-
-The system should generate an appropriate security event containing, where supported:
-
-* Source IP
-* Attack category
-* Threat score
-* Timestamp
-* Request information
-* Defense action
-* Blocking status
-
-## 3.7 Pass Criteria
-
-The test passes when the configured SQL injection detection behavior occurs and the expected security telemetry is generated.
+| Parameter        | Configuration                    |
+| ---------------- | -------------------------------- |
+| Target           | `http://localhost:3000`          |
+| Endpoint         | `/api/v1/auth/login`             |
+| Environment      | Local development                |
+| Test Runner      | Python                           |
+| Execution        | `uv run python security_test.py` |
+| Timeout          | 5 seconds                        |
+| Total Test Cases | 11                               |
 
 ---
 
-# 4. ATK-002 — Cross-Site Scripting (XSS)
+## 3. Scenario Identification
+
+The current security testing framework contains four primary scenarios.
+
+| ID      | Scenario               | Test Cases | Primary Defense |
+| ------- | ---------------------- | ---------: | --------------- |
+| ATK-001 | SQL Injection          |          2 | Honeypot Block  |
+| ATK-002 | Cross-Site Scripting   |          2 | Dynamic Tarpit  |
+| ATK-003 | Path Traversal         |          2 | Honeypot Block  |
+| ATK-004 | Controlled Brute Force |          5 | Dynamic Tarpit  |
+
+---
+
+# 4. ATK-001 — SQL Injection
 
 ## 4.1 Objective
 
-Determine whether Wotmed-Net identifies requests containing common XSS indicators.
+Validate that Wotmed-Net can identify SQL Injection patterns in authentication requests and apply the configured blocking defense.
 
 ## 4.2 Target
 
-The test should target an authorized endpoint that accepts user-controlled input.
+```text
+POST /api/v1/auth/login
+```
 
-Example:
+## 4.3 Test Cases
+
+Two SQL Injection scenarios are currently implemented:
+
+1. SQLi Authentication Bypass
+2. SQLi UNION Probe
+
+## 4.4 Expected Behavior
+
+The malicious request should:
+
+1. Be inspected by Wotmed-Net.
+2. Be identified as suspicious.
+3. Trigger SQL Injection detection.
+4. Receive the configured blocking defense.
+5. Be redirected toward the honeypot defense path.
+
+Expected result:
 
 ```text
-GET /api/test?query=<controlled-payload>
+Detection: DETECTED
+Defense:   BLOCK_AND_REDIRECT_HONEYPOT
+Blocking:  BLOCKED
 ```
 
-## 4.3 Controlled Test Inputs
+## 4.5 Actual Results
 
-Representative XSS detection probes may include:
-
-```html
-<script>alert(1)</script>
-```
-
-```html
-<img src=x onerror=alert(1)>
-```
+### SQLi Authentication Bypass
 
 ```text
-javascript:alert(1)
+Status:    500
+Detection: DETECTED
+Defense:   BLOCK_AND_REDIRECT_HONEYPOT
+Blocking:  BLOCKED
+Result:    TEST_PASSED
 ```
 
-These payloads are used as controlled detection probes and should not be executed against real users or production systems.
-
-## 4.4 Expected Detection
-
-Expected classification:
+### SQLi UNION Probe
 
 ```text
-Attack Type: XSS
-Detection: TRUE
+Status:    500
+Detection: DETECTED
+Defense:   BLOCK_AND_REDIRECT_HONEYPOT
+Blocking:  BLOCKED
+Result:    TEST_PASSED
 ```
 
-## 4.5 Expected Defense
+## 4.6 Scenario Result
 
-The observed response should be compared with the configured defense policy.
+```text
+Tests:    2
+Detected: 2
+Passed:   2
+Failed:   0
+```
 
-The test should determine whether the request is:
-
-* Detected
-* Monitored
-* Delayed
-* Blocked
-
-## 4.6 Expected Telemetry
-
-The security telemetry should record the event where supported.
-
-Relevant information includes:
-
-* Source IP
-* Attack category
-* Timestamp
-* Threat score
-* Defense action
-* Request information
-
-## 4.7 Pass Criteria
-
-The test passes when the configured XSS detection behavior is observed and the corresponding security event is correctly recorded.
+**ATK-001: PASS**
 
 ---
 
-# 5. ATK-003 — Path Traversal
+# 5. ATK-002 — Cross-Site Scripting
 
 ## 5.1 Objective
 
-Determine whether Wotmed-Net identifies suspicious path traversal patterns in HTTP requests.
+Validate that Wotmed-Net identifies common XSS patterns and applies a containment mechanism instead of treating suspicious requests as normal traffic.
 
 ## 5.2 Target
 
-The test should target an authorized application endpoint that processes a path or file-related parameter.
-
-Example:
-
 ```text
-GET /api/test?file=<controlled-payload>
+POST /api/v1/auth/login
 ```
 
-## 5.3 Controlled Test Inputs
+## 5.3 Test Cases
 
-Representative traversal indicators may include:
+Two XSS scenarios are currently implemented:
 
-```text
-../../etc/passwd
-```
+1. Basic Script Injection
+2. Image Event Handler Injection
 
-```text
-..%2F..%2Fetc%2Fpasswd
-```
+## 5.4 Expected Behavior
 
-```text
-..\..\windows\system.ini
-```
+The malicious request should:
 
-These values are used only to test request inspection.
+1. Be inspected.
+2. Be identified as an XSS-related suspicious request.
+3. Trigger detection.
+4. Activate the autonomous dynamic tarpit.
+5. Delay and contain the suspicious activity.
 
-The test should not attempt to access or disclose real sensitive files.
-
-## 5.4 Expected Detection
-
-Expected classification:
+Expected result:
 
 ```text
-Attack Type: Path Traversal
-Detection: TRUE
+Detection: DETECTED
+Defense:   AUTONOMOUS_DYNAMIC_TARPIT
+Blocking:  TARPITTED
 ```
 
-## 5.5 Expected Defense
+## 5.5 Actual Results
 
-The test should verify the configured Wotmed-Net response.
-
-Possible actions include:
+### Basic Script Injection
 
 ```text
-Monitor
-Tarpit
-Block
+Status:    200
+Detection: DETECTED
+Defense:   AUTONOMOUS_DYNAMIC_TARPIT
+Blocking:  TARPITTED
+Result:    TEST_PASSED
 ```
 
-The actual action must be recorded from the running system.
+### Image Event Handler Injection
 
-## 5.6 Expected Telemetry
+```text
+Status:    200
+Detection: DETECTED
+Defense:   AUTONOMOUS_DYNAMIC_TARPIT
+Blocking:  TARPITTED
+Result:    TEST_PASSED
+```
 
-The event should be available through the project's telemetry mechanism where supported.
+## 5.6 Scenario Result
 
-Expected information may include:
+```text
+Tests:    2
+Detected: 2
+Passed:   2
+Failed:   0
+```
 
-* Source IP
-* Requested path/parameter
-* Attack category
-* Threat score
-* Timestamp
-* Defense action
+**ATK-002: PASS**
 
-## 5.7 Pass Criteria
-
-The test passes when the traversal indicator is handled according to the configured security policy and the relevant telemetry is available.
+> Note: The HTTP `200` response does not by itself indicate that the malicious request was allowed normally. The security test separately recorded the request as detected and tarpitted.
 
 ---
 
-# 6. ATK-004 — Brute-Force Authentication
+# 6. ATK-003 — Path Traversal
 
 ## 6.1 Objective
 
-Determine whether Wotmed-Net can identify repeated authentication attempts and apply the configured threat-response mechanism.
+Validate that Wotmed-Net can identify path traversal patterns and apply the configured blocking and honeypot defense.
 
-## 6.2 Test Conditions
-
-A dedicated test account or authentication endpoint should be used.
-
-The test must not use real user credentials.
-
-Example:
+## 6.2 Target
 
 ```text
-POST /api/test-login
+POST /api/v1/auth/login
 ```
 
-Repeated controlled authentication attempts should be generated against the test environment.
+## 6.3 Test Cases
 
-## 6.3 Test Pattern
+Two Path Traversal scenarios are currently implemented:
 
-The automated test should perform a limited number of controlled attempts.
+1. Basic Path Traversal
+2. Nested Path Traversal
 
-Example:
+## 6.4 Expected Behavior
+
+The suspicious request should:
+
+1. Be inspected.
+2. Trigger Path Traversal detection.
+3. Be blocked.
+4. Be redirected toward the honeypot defense mechanism.
+
+Expected result:
 
 ```text
-Attempt 1 → Authentication Failure
-Attempt 2 → Authentication Failure
-Attempt 3 → Authentication Failure
-Attempt 4 → Authentication Failure
-...
+Detection: DETECTED
+Defense:   BLOCK_AND_REDIRECT_HONEYPOT
+Blocking:  BLOCKED
 ```
 
-The exact number of attempts should be determined by the configured security policy.
+## 6.5 Actual Results
 
-## 6.4 Expected Detection
-
-The system should identify repeated suspicious authentication activity when the configured threshold is reached.
-
-Expected classification:
+### Basic Path Traversal
 
 ```text
-Attack Type: Brute Force
-Detection: TRUE
+Status:    500
+Detection: DETECTED
+Defense:   BLOCK_AND_REDIRECT_HONEYPOT
+Blocking:  BLOCKED
+Result:    TEST_PASSED
 ```
 
-## 6.5 Expected Defense
+### Nested Path Traversal
 
-The test should verify whether the configured mechanism:
+```text
+Status:    500
+Detection: DETECTED
+Defense:   BLOCK_AND_REDIRECT_HONEYPOT
+Blocking:  BLOCKED
+Result:    TEST_PASSED
+```
 
-* Increases threat score
-* Applies rate limiting
-* Delays requests
-* Triggers a tarpit
-* Blocks the source IP
-* Produces another configured mitigation
+## 6.6 Scenario Result
 
-The actual implementation must determine which behavior occurs.
+```text
+Tests:    2
+Detected: 2
+Passed:   2
+Failed:   0
+```
 
-## 6.6 Expected Telemetry
+**ATK-003: PASS**
 
-The system should record relevant authentication threat events.
+---
 
-Expected information may include:
+# 7. ATK-004 — Controlled Brute Force
 
-* Source IP
-* Attempt count
-* Threat score
-* Timestamp
+## 7.1 Objective
+
+Validate behavioral detection of repeated authentication attempts and confirm that the configured brute-force threshold triggers an adaptive defense.
+
+Unlike the other attack scenarios, this test validates behavior across multiple requests rather than a single malicious payload.
+
+## 7.2 Target
+
+```text
+POST /api/v1/auth/login
+```
+
+## 7.3 Test Design
+
+The scenario performs five controlled authentication attempts.
+
+The expected behavior is:
+
+```text
+Attempts 1–4
+     ↓
+Below Detection Threshold
+     ↓
+ALLOW
+
+Attempt 5
+     ↓
+Threshold Reached
+     ↓
+DETECTED
+     ↓
+AUTONOMOUS_DYNAMIC_TARPIT
+```
+
+## 7.4 Actual Results
+
+| Attempt | Detection    | Defense                   | Blocking    | Result |
+| ------: | ------------ | ------------------------- | ----------- | ------ |
+|       1 | NOT_DETECTED | ALLOW                     | NOT_BLOCKED | PASS   |
+|       2 | NOT_DETECTED | ALLOW                     | NOT_BLOCKED | PASS   |
+|       3 | NOT_DETECTED | ALLOW                     | NOT_BLOCKED | PASS   |
+|       4 | NOT_DETECTED | ALLOW                     | NOT_BLOCKED | PASS   |
+|       5 | DETECTED     | AUTONOMOUS_DYNAMIC_TARPIT | TARPITTED   | PASS   |
+
+## 7.5 Threshold Validation
+
+The fifth attempt successfully triggered the configured defensive response.
+
+```text
+Defense Triggered: YES
+Threshold Detected: YES
+Suite Status: TEST_PASSED
+```
+
+## 7.6 Scenario Result
+
+```text
+Attempts:          5
+Detected:          1
+Passed:            5
+Failed:            0
+Defense Triggered: YES
+```
+
+**ATK-004: PASS**
+
+The 20% detection rate for this scenario is expected because the test is designed to trigger detection only when the configured threshold is reached.
+
+---
+
+# 8. Scenario Coverage Summary
+
+| ID        | Scenario               |  Tests | Detected | Passed | Failed |
+| --------- | ---------------------- | -----: | -------: | -----: | -----: |
+| ATK-001   | SQL Injection          |      2 |        2 |      2 |      0 |
+| ATK-002   | Cross-Site Scripting   |      2 |        2 |      2 |      0 |
+| ATK-003   | Path Traversal         |      2 |        2 |      2 |      0 |
+| ATK-004   | Controlled Brute Force |      5 |        1 |      5 |      0 |
+| **Total** | **4 Scenarios**        | **11** |    **7** | **11** |  **0** |
+
+---
+
+# 9. Expected Defense Mapping
+
+The current scenario-to-defense mapping is:
+
+| Scenario       | Expected Defense       | Observed  |
+| -------------- | ---------------------- | --------- |
+| SQL Injection  | Honeypot Block         | Confirmed |
+| XSS            | Dynamic Tarpit         | Confirmed |
+| Path Traversal | Honeypot Block         | Confirmed |
+| Brute Force    | Threshold-based Tarpit | Confirmed |
+
+---
+
+# 10. Scenario Execution Process
+
+Each scenario follows the same general process:
+
+```text
+Scenario Selection
+       ↓
+Payload / Request Generation
+       ↓
+HTTP Request
+       ↓
+Wotmed-Net Inspection
+       ↓
+Detection
+       ↓
+Threat Evaluation
+       ↓
+Defense Selection
+       ↓
+Defense Execution
+       ↓
+Observed Result
+       ↓
+Expected vs Actual Comparison
+       ↓
+PASS / FAIL
+```
+
+---
+
+# 11. Test Result Criteria
+
+A scenario passes when its observed behavior satisfies its defined security objective.
+
+### Detection-Based Test
+
+```text
+Expected: DETECTED
+Observed: DETECTED
+Result:   PASS
+```
+
+### Blocking Test
+
+```text
+Expected: BLOCKED
+Observed: BLOCKED
+Result:   PASS
+```
+
+### Tarpit Test
+
+```text
+Expected: TARPITTED
+Observed: TARPITTED
+Result:   PASS
+```
+
+### Threshold Test
+
+```text
+Expected:
+Attempts 1–4 → ALLOW
+Attempt 5    → DETECTED + TARPIT
+
+Observed:
+Attempts 1–4 → ALLOW
+Attempt 5    → DETECTED + TARPIT
+
+Result: PASS
+```
+
+---
+
+# 12. Legitimate Traffic Consideration
+
+The current brute-force scenario provides limited validation that activity below the configured threshold is not immediately blocked.
+
+However, this should not be considered a complete legitimate-traffic or false-positive assessment.
+
+A comprehensive baseline should include representative normal requests such as:
+
+* Normal authentication
+* Normal user input
+* Normal API requests
+* Repeated legitimate actions
+* Common application navigation
+
+A formal false-positive rate was not calculated from the current 11-test execution.
+
+---
+
+# 13. Safety Boundaries
+
+The attack scenarios are executed within controlled boundaries.
+
+### Environment
+
+Testing is performed against the local development instance.
+
+### Payloads
+
+Payloads are predefined and controlled.
+
+### Scope
+
+Testing is limited to the configured application endpoint.
+
+### Non-Destructive Approach
+
+The scenarios are designed to test detection and defense behavior without intentionally damaging application data.
+
+### Reproducibility
+
+The same scenarios can be executed repeatedly using the automated testing framework.
+
+---
+
+# 14. Evidence Collection
+
+Evidence is collected from the automated testing framework.
+
+The framework records:
+
+* Test name
 * Attack category
+* HTTP status
+* Detection status
 * Defense action
-* Blocking status
+* Blocking/containment status
+* Response time
+* Expected result
+* Actual result
+* Test status
 
-## 6.7 Pass Criteria
-
-The test passes when repeated authentication activity produces the configured security response and the corresponding telemetry is recorded.
-
----
-
-# 7. Legitimate Traffic Baseline
-
-Security testing must also include legitimate requests.
-
-This is necessary to measure false positives.
-
-Example legitimate requests:
+Generated reports:
 
 ```text
-GET /api/health
-```
-
-```text
-GET /api/products
-```
-
-```text
-GET /api/test?search=normal-query
-```
-
-The exact endpoints depend on the active test application.
-
-Expected behavior:
-
-```text
-Legitimate Request
-       ↓
-No Attack Indicator
-       ↓
-Normal Application Response
-       ↓
-No Unnecessary Blocking
-```
-
-These requests will be used as a baseline for false-positive measurement.
-
----
-
-# 8. Attack Scenario Execution Flow
-
-Each scenario follows the same basic process:
-
-```text
-Initialize Test
-      ↓
-Verify Target
-      ↓
-Send Controlled Request
-      ↓
-Capture HTTP Response
-      ↓
-Inspect Wotmed-Net Behavior
-      ↓
-Check Threat Score
-      ↓
-Check Defense Action
-      ↓
-Verify Telemetry
-      ↓
-Record Result
-```
----
-
-# 9. Scenario Result Template
-
-Each executed scenario should produce a result similar to:
-
-| Field          | Value                 |
-| -------------- | --------------------- |
-| Test ID        | ATK-001               |
-| Attack Type    | SQL Injection         |
-| Target         | Actual test endpoint  |
-| Payload        | Controlled test input |
-| Detection      | PASS/FAIL             |
-| Classification | Actual result         |
-| Threat Score   | Actual value          |
-| Defense Action | Actual action         |
-| HTTP Status    | Actual status         |
-| Response Time  | Measured value        |
-| Telemetry      | PASS/FAIL             |
-| Blocking       | PASS/FAIL/N/A         |
-| Overall Result | PASS/FAIL             |
-
----
-
-# 10. Test Data Handling
-
-Test data must remain isolated from production data.
-
-The security testing process should:
-
-* Use dedicated test endpoints where possible.
-* Use test accounts for authentication scenarios.
-* Avoid real credentials.
-* Avoid destructive database operations.
-* Avoid sensitive production information.
-* Avoid uncontrolled traffic generation.
-* Clean up temporary test data after testing.
-
----
-
-# 11. Safety Boundaries
-
-The attack scenarios are intended exclusively for authorized environments.
-
-The following activities are outside the scope of this test suite:
-
-* Testing third-party systems without authorization
-* Data destruction
-* Data exfiltration
-* Denial-of-service attacks
-* Credential theft
-* Malware deployment
-* Persistent compromise
-* Attacks against production systems without explicit authorization
-
-The objective is to validate Wotmed-Net's defensive capabilities safely and reproducibly.
-
----
-
-# 12. Scenario Coverage
-
-The current test suite covers the primary application-layer scenarios defined for the project:
-
-```text
-                  Wotmed-Net
-                      |
-       +--------------+--------------+
-       |              |              |
-      SQLi           XSS       Path Traversal
-       |              |              |
-       +--------------+--------------+
-                      |
-                Brute Force
-                      |
-                      v
-              Defense Validation
-                      |
-                      v
-                  Telemetry
-                      |
-                      v
-                Test Results
+security-tests/results/security_test_results.json
+security-tests/results/security_test_results.csv
 ```
 
 ---
 
-# 13. Completion Criteria
+# 15. Current Limitations
 
-The attack scenario phase is complete when:
+The current scenarios provide coverage for four application-layer attack categories.
 
-* All four attack categories have defined test cases.
-* Legitimate baseline traffic has been defined.
-* Test targets have been identified.
-* Controlled inputs have been prepared.
-* Expected behavior has been documented.
-* Automated execution has been implemented.
-* Actual results have been collected.
-* Defense behavior has been validated.
-* Telemetry has been verified.
-* Results have been documented.
+They do not represent complete application security testing.
+
+Additional scenarios can be added for:
+
+* Command Injection
+* CSRF
+* Authentication security
+* Authorization
+* Session management
+* API abuse
+* Header manipulation
+* Rate limiting
+* Additional XSS variants
+* Additional SQL Injection variants
+* Larger behavioral attack sequences
 
 ---
 
-# 14. Important Implementation Note
+# 16. Future Scenario Expansion
 
-The scenarios in this document define the intended security tests.
+Future versions of the framework can add:
 
-They do not claim that Wotmed-Net currently detects every listed attack.
+1. Command Injection scenarios
+2. Authentication bypass variations
+3. Authorization testing
+4. Session security scenarios
+5. API abuse scenarios
+6. CSRF scenarios
+7. Header anomaly testing
+8. Larger brute-force campaigns
+9. Legitimate traffic baseline scenarios
+10. Regression scenarios for previously fixed vulnerabilities
 
-Actual detection capability must be established by executing the tests against the running implementation.
+---
 
-Any difference between expected and observed behavior must be documented as a test finding.
+# 17. Final Scenario Status
+
+The current attack-scenario suite is implemented and validated for the defined scope.
+
+```text
+ATK-001 SQL Injection       : PASS
+ATK-002 XSS                 : PASS
+ATK-003 Path Traversal      : PASS
+ATK-004 Brute Force         : PASS
+
+Total Test Cases            : 11
+Passed                      : 11
+Failed                      : 0
+```
+
+The completed scenarios provide repeatable evidence that the tested Wotmed-Net defense mechanisms respond according to their defined behavior.

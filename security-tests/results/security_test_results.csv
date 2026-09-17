@@ -1,0 +1,12 @@
+test_name,category,payload,attempt,success,status_code,response_time,test_status,detection_result,defense_action,blocking_status,error,timestamp,expected_behavior
+SQLi Authentication Bypass,SQL Injection,' OR '1'='1,,True,500,0.103,TEST_PASSED,DETECTED,BLOCK_AND_REDIRECT_HONEYPOT,BLOCKED,,2026-09-17T16:22:01.550324+00:00,
+SQLi UNION Probe,SQL Injection,' UNION SELECT NULL--,,True,500,0.0162,TEST_PASSED,DETECTED,BLOCK_AND_REDIRECT_HONEYPOT,BLOCKED,,2026-09-17T16:22:01.550324+00:00,
+Basic Script Injection,Cross-Site Scripting,<script>alert(1)</script>,,True,200,2.0914,TEST_PASSED,DETECTED,AUTONOMOUS_DYNAMIC_TARPIT,TARPITTED,,2026-09-17T16:22:01.550324+00:00,
+Image Event Handler Injection,Cross-Site Scripting,<img src=x onerror=alert(1)>,,True,200,2.835,TEST_PASSED,DETECTED,AUTONOMOUS_DYNAMIC_TARPIT,TARPITTED,,2026-09-17T16:22:01.550324+00:00,
+Basic Path Traversal,Path Traversal,../test.txt,,True,500,0.0249,TEST_PASSED,DETECTED,BLOCK_AND_REDIRECT_HONEYPOT,BLOCKED,,2026-09-17T16:22:01.550324+00:00,
+Nested Path Traversal,Path Traversal,../../test.txt,,True,500,0.0244,TEST_PASSED,DETECTED,BLOCK_AND_REDIRECT_HONEYPOT,BLOCKED,,2026-09-17T16:22:01.550324+00:00,
+Controlled Login Brute Force Attempt 1,Brute Force,controlled-invalid-login-1,1,True,200,0.0161,TEST_PASSED,NOT_DETECTED,ALLOW,NOT_BLOCKED,,2026-09-17T16:22:01.550324+00:00,EXPECTED_NOT_DETECTED
+Controlled Login Brute Force Attempt 2,Brute Force,controlled-invalid-login-2,2,True,200,0.0144,TEST_PASSED,NOT_DETECTED,ALLOW,NOT_BLOCKED,,2026-09-17T16:22:01.550324+00:00,EXPECTED_NOT_DETECTED
+Controlled Login Brute Force Attempt 3,Brute Force,controlled-invalid-login-3,3,True,200,0.0402,TEST_PASSED,NOT_DETECTED,ALLOW,NOT_BLOCKED,,2026-09-17T16:22:01.550324+00:00,EXPECTED_NOT_DETECTED
+Controlled Login Brute Force Attempt 4,Brute Force,controlled-invalid-login-4,4,True,200,0.0166,TEST_PASSED,NOT_DETECTED,ALLOW,NOT_BLOCKED,,2026-09-17T16:22:01.550324+00:00,EXPECTED_NOT_DETECTED
+Controlled Login Brute Force Attempt 5,Brute Force,controlled-invalid-login-5,5,True,200,2.2627,TEST_PASSED,DETECTED,AUTONOMOUS_DYNAMIC_TARPIT,TARPITTED,,2026-09-17T16:22:01.550324+00:00,EXPECTED_DETECTED
