@@ -8,6 +8,16 @@ class WotmedInspector {
     this.sqlPatterns = /(\bOR\b|\bAND\b|\bUNION\b|\bSELECT\b|\bDROP\b|--|#|;%20OR%20)/i;
     this.xssPatterns = /(<script\b[^<]*(?:(?!<\/script>)<script>[^<]*)*<\/script>|javascript:|onerror\s*=|onload\s*=|alert\s*\()/i;
     this.canaryPattern = /wtd_canary_[a-z0-9]+/i;
+    
+    // Dedicated signatures for automated reconnaissance and scanning tools
+    this.scannerSignatures = [
+      /sqlmap/i,
+      /nikto/i,
+      /nmap/i,
+      /burpsuite/i,
+      /dirbuster/i,
+      /gobuster/i
+    ];
   }
 
   inspect(requestContext) {
@@ -15,6 +25,7 @@ class WotmedInspector {
     let hasXss = false;
     let hasHeaderAnomaly = false;
     let canaryTokenTriggered = false;
+    let hasAutomatedScanner = false;
 
     const targetString = JSON.stringify({
       path: requestContext.path,
@@ -22,6 +33,7 @@ class WotmedInspector {
       body: requestContext.body
     });
 
+    // 1. Check Payload Signatures (SQLi & XSS)
     if (this.sqlPatterns.test(targetString)) {
       hasSqlInjection = true;
     }
@@ -30,7 +42,8 @@ class WotmedInspector {
       hasXss = true;
     }
 
-    const headers = requestContext.headers;
+    // 2. Check Headers & Anomalies
+    const headers = requestContext.headers || {};
     const requiredStandardHeaders = ['host', 'user-agent'];
     const missingHeaders = requiredStandardHeaders.filter(h => !headers[h]);
     
@@ -38,6 +51,16 @@ class WotmedInspector {
       hasHeaderAnomaly = true;
     }
 
+    // 3. Check Automated Scanner User-Agents
+    const userAgent = headers['user-agent'] || '';
+    for (const pattern of this.scannerSignatures) {
+      if (pattern.test(userAgent)) {
+        hasAutomatedScanner = true;
+        break;
+      }
+    }
+
+    // 4. Check Canary Tokens (Deception Traps)
     if (this.canaryPattern.test(targetString)) {
       canaryTokenTriggered = true;
     }
@@ -46,6 +69,7 @@ class WotmedInspector {
       hasSqlInjection,
       hasXss,
       hasHeaderAnomaly,
+      hasAutomatedScanner,
       canaryTokenTriggered
     };
   }

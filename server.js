@@ -1,3 +1,4 @@
+require('dotenv').config(); // <--- Loads your .env file variables automatically!
 const express = require('express');
 const wotmedDefense = require('./middleware/wotmedDefense');
 
