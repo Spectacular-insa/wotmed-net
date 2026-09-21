@@ -1,8 +1,11 @@
 const express = require('express');
+const { WebSocketServer } = require('ws');
 const wotmedDefense = require('./middleware/wotmedDefense');
+const telemetryInstance = require('./core-engine/telemetry');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const WS_PORT = process.env.WS_PORT || 3001;
 
 // Middleware to parse JSON request bodies
 app.use(express.json());
@@ -30,3 +33,29 @@ app.post('/api/v1/auth/login', (req, res) => {
 app.listen(PORT, () => {
   console.log(`[Wotmed-Net Edge Gateway]: Running on port ${PORT}`);
 });
+
+// WebSocket Server for SOC Dashboard
+const wss = new WebSocketServer({ port: WS_PORT });
+
+wss.on('connection', (ws) => {
+  console.log('[WebSocket] SOC Dashboard client connected');
+  
+  // Broadcast incident to this specific client when it happens
+  const onIncident = (payload) => {
+    if (ws.readyState === ws.OPEN) {
+      ws.send(JSON.stringify({
+        event_type: 'threat_alert',
+        data: payload
+      }));
+    }
+  };
+
+  telemetryInstance.on('incident', onIncident);
+
+  ws.on('close', () => {
+    console.log('[WebSocket] SOC Dashboard client disconnected');
+    telemetryInstance.off('incident', onIncident);
+  });
+});
+
+console.log(`[Wotmed-Net Telemetry Stream]: WebSocket Server running on port ${WS_PORT}`);

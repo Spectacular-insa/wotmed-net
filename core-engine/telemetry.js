@@ -4,9 +4,11 @@
  */
 
 const { createClient } = require('@supabase/supabase-js');
+const EventEmitter = require('events');
 
-class WotmedTelemetry {
+class WotmedTelemetry extends EventEmitter {
   constructor() {
+    super();
     // Initialize Supabase client using environment variables
     const supabaseUrl = process.env.SUPABASE_URL || '';
     const supabaseKey = process.env.SUPABASE_SERVICE_KEY || '';
@@ -19,7 +21,7 @@ class WotmedTelemetry {
     }
   }
 
-  async emit(incidentData) {
+  async emitIncident(incidentData) {
     const payload = {
       incident_id: `inc_${Math.random().toString(36).substring(2, 10)}_${Date.now()}`,
       client_ip: incidentData.requestContext.clientIp,
@@ -32,6 +34,9 @@ class WotmedTelemetry {
       triggered_flags: incidentData.evaluationResult.triggeredFlags,
       created_at: incidentData.evaluationResult.timestamp
     };
+
+    // Broadcast event locally for WebSocket listeners
+    this.emit('incident', payload);
 
     // Asynchronous emission to backend database / SOC pipeline without blocking response execution
     if (this.supabase) {
@@ -51,4 +56,6 @@ class WotmedTelemetry {
   }
 }
 
-module.exports = WotmedTelemetry;
+// Export as a singleton so both the middleware and the WebSocket server can access the same instance
+const telemetryInstance = new WotmedTelemetry();
+module.exports = telemetryInstance;
