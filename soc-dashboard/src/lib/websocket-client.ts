@@ -84,32 +84,32 @@ class WebSocketClient {
   }
 
   private convertToThreatEvent(data: any): ThreatEvent {
-    return {
-      id: data.id || `threat-${Date.now()}`,
-      ip: data.ip_address,
-      threatType: data.threat_type,
-      payloadHash: data.payload_hash,
-      scoreDelta: data.threat_score,
-      location: {
-        country: data.country_name || 'Unknown',
-        city: data.city,
-        lat: data.latitude || 0,
-        lng: data.longitude || 0,
-      },
-      timestamp: new Date(data.timestamp),
-      severity: this.mapSeverity(data.severity),
-    };
-  }
+    // Map action_taken to our frontend severity badges
+    let severity: 'INFO' | 'TARPIT' | 'CRITICAL' | 'BLOCKED' = 'INFO';
+    if (data.action_taken === 'BLOCK_AND_REDIRECT_HONEYPOT') severity = 'BLOCKED';
+    else if (data.action_taken === 'AUTONOMOUS_DYNAMIC_TARPIT') severity = 'TARPIT';
+    else if (data.threat_score >= 80) severity = 'CRITICAL';
+    
+    // Extract the primary threat type from the flags array
+    const threatType = (data.triggered_flags && data.triggered_flags.length > 0) 
+      ? data.triggered_flags.join(', ') 
+      : 'ANOMALOUS_TRAFFIC';
 
-  private mapSeverity(severity: string): 'INFO' | 'TARPIT' | 'CRITICAL' | 'BLOCKED' {
-    const severityMap: Record<string, 'INFO' | 'TARPIT' | 'CRITICAL' | 'BLOCKED'> = {
-      'critical': 'CRITICAL',
-      'high': 'CRITICAL',
-      'medium': 'TARPIT',
-      'low': 'INFO',
-      'blocked': 'BLOCKED',
+    return {
+      id: data.incident_id || `threat-${Date.now()}`,
+      ip: data.client_ip || 'Unknown IP',
+      threatType: threatType,
+      payloadHash: data.tls_fingerprint || 'N/A', // Using TLS fingerprint as a stand-in for payload hash
+      scoreDelta: data.threat_score || 0,
+      location: {
+        country: 'Local/Unknown', // Middleware doesn't currently do GeoIP, so default this
+        city: '',
+        lat: 0,
+        lng: 0,
+      },
+      timestamp: new Date(data.created_at || Date.now()),
+      severity: severity,
     };
-    return severityMap[severity.toLowerCase()] || 'INFO';
   }
 
   on(event: string, callback: Function) {
