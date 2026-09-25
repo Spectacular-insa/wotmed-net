@@ -1,3 +1,18 @@
+[Wotmed SOC Telemetry Stream]: {
+  "incident_id": "inc_sdfp7z4h_1789766126241",
+  "client_ip": "::1",
+  "user_agent": "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-US) WindowsPowerShell/5.1.26100.9444",
+  "path": "/api/test",
+  "method": "POST",
+  "tls_fingerprint": "AUTOMATED_CLIENT_TLS",
+  "threat_score": 100,
+  "action_taken": "BLOCK_AND_REDIRECT_HONEYPOT",
+  "triggered_flags": [
+    "ABNORMAL_HEADER_ORDER",
+    "CANARY_TOKEN_TRAPPED"
+  ],
+  "created_at": "2026-09-18T21:15:26.241Z"
+}
 # Reference Application
 
 ## Overview
