@@ -1,57 +1,51 @@
 # Reference Application and Deception Layer
 
-**Author:** Eman Mohammednur Ahmed  
-**Role:** Demo App & Deception Tester  
+**Author:** Eman Mohammednur Ahmed
+**Role:** Demo App & Deception Tester
 **Project:** Wotmed-Net
 
 ---
 
 ## Executive Summary
 
-The Demo App & Deception layer establishes a controlled validation environment for Wotmed-Net by integrating deceptive resources into the Student Management application and measuring how those interactions are detected, blocked, and observed. This component is designed to prove that legitimate business traffic can continue without disruption while suspicious access attempts to decoy assets trigger structured security events and deny access with HTTP 403 responses.
+The Demo App & Deception Layer establishes a controlled validation environment for Wotmed-Net by integrating deceptive resources into the Student Management application and verifying how interactions with those resources are detected, recorded, and blocked.
 
-This section is strategically important because it demonstrates the practical value of deception-based detection in a real application context. It verifies that the system can distinguish between normal application behavior and adversarial interaction, while also confirming that telemetry and event generation are functioning at the local verification stage before broader platform integration is completed.
+The implementation demonstrates that legitimate application traffic can continue to operate while controlled interactions with deceptive resources generate structured security events and return HTTP `403 Forbidden` responses.
+
+The deception layer has been locally verified together with Wotmed-Net security and telemetry observation. Final cloud telemetry storage and SOC Dashboard integration remain pending broader project-wide integration and verification.
 
 ---
 
 ## 1. Overview
 
-The reference application provides a realistic workload for validating Wotmed-Net’s ability to monitor application-layer activity, detect deceptive interactions, and enforce access controls around intentionally exposed decoy resources. The application remains operational for standard requests while deceptive endpoints trigger security actions when accessed or probed.
+The Student Management application serves as the reference application for validating Wotmed-Net application-layer security and deception capabilities.
 
-This creates a dependable environment for demonstrating how deception can function as a measurable and effective security control.
+Deception resources are integrated into the application backend and provide controlled security signals when accessed. This creates a reproducible environment for testing the relationship between application requests, Wotmed-Net security processing, deception mechanisms, security-event generation, and telemetry observation.
 
----
-
-## 2. Strategic Value
-
-This component is not just a demonstration of endpoint access; it validates the project’s security model in a meaningful way.
-
-It proves that:
-
-- ordinary application behavior continues normally
-- deceptive endpoints are identifiable and traceable
-- suspicious interactions generate actionable alerts
-- access can be denied before exploitation occurs
-- telemetry collection can observe and record the event lifecycle
-
-This is a critical proof point for the overall Wotmed-Net platform because it demonstrates deception-driven threat detection in a real application workflow, not merely in theory.
+Normal application functionality remains available while the dedicated deception routes provide controlled security-testing points.
 
 ---
 
-## 3. Purpose
+## 2. Purpose
 
-The primary objective of this layer is to validate the interaction between the application layer and the Wotmed-Net defense stack. It ensures that the Student Management application supports both business functionality and controlled deception-driven detection without interrupting normal usage.
+The primary purpose of this component is to validate the interaction between the reference application and the Wotmed-Net defense stack.
 
-The implementation specifically verifies:
+The implementation verifies that:
 
-- legitimate traffic remains functional
-- deceptive endpoints trigger event generation
-- suspicious requests are blocked with HTTP 403
-- local telemetry observes the interaction correctly
+* legitimate application requests can continue successfully;
+* dedicated deception resources can be accessed for controlled testing;
+* interactions with deception resources generate structured security events;
+* verified deception routes return HTTP `403 Forbidden`;
+* Wotmed-Net telemetry observations are produced locally; and
+* the behavior can be reproduced and documented using controlled localhost testing.
 
 ---
 
-## 4. Request Flow
+## 3. Reference Application Integration
+
+The reference application is integrated with Wotmed-Net through its backend.
+
+The current request flow is:
 
 ```text
 Client Request
@@ -66,142 +60,248 @@ Application Route / Deception Route
       ↓
 Security Event Generation
       ↓
-Telemetry Observation
+Wotmed-Net Telemetry Observation
 ```
 
-This flow enables a clean distinction between normal application behavior and controlled deceptive interaction.
+Normal application requests continue through the application routes.
+
+Requests interacting with the dedicated deception resources can trigger the corresponding security event and receive an access-denied response.
 
 ---
 
-## 5. Implemented Deception Mechanisms
+## 4. Implemented Deception Mechanisms
 
-The reference application includes four verified deception mechanisms.
+Four deception mechanisms have been implemented and verified in the reference application.
 
-### 5.1 Canary Endpoint
+### 4.1 Canary Endpoint
 
-**Route:** `GET /api/deception/canary`
+**Route:**
 
-- Event: `canary_triggered`
-- Result: HTTP `403 Forbidden`
-- Status: IMPLEMENTED — VERIFIED
+```text
+GET /api/deception/canary
+```
 
-### 5.2 Canary File Resource
+**Security event:**
 
-**Route:** `GET /api/deception/canary-file`
+```text
+canary_triggered
+```
 
-- Event: `canary_file_triggered`
-- Result: HTTP `403 Forbidden`
-- Status: IMPLEMENTED — VERIFIED
+**Observed result:** HTTP `403 Forbidden`
 
-### 5.3 Decoy Administrative Resource
-
-**Route:** `GET /api/deception/decoy-admin`
-
-- Event: `decoy_admin_triggered`
-- Result: HTTP `403 Forbidden`
-- Status: IMPLEMENTED — VERIFIED
-
-### 5.4 Honeytoken Detection
-
-**Route:** `GET /api/deception/honeytoken`
-
-- Token: `WOTMED-DECOY-ADMIN-TOKEN-001`
-- Event: `honeytoken_triggered`
-- Result: HTTP `403 Forbidden`
-- Status: IMPLEMENTED — VERIFIED
+**Status:** IMPLEMENTED — VERIFIED
 
 ---
 
-## 6. Security Event Generation
+### 4.2 Canary File Resource
 
-Each deceptive interaction produces a structured security event containing relevant request metadata, including:
+**Route:**
 
-- event type
-- resource accessed
-- HTTP method
-- source IP
-- user-agent
-- timestamp
+```text
+GET /api/deception/canary-file
+```
 
-This creates a clear security signal when a deceptive asset is accessed, supporting both validation and operational monitoring.
+**Security event:**
 
----
+```text
+canary_file_triggered
+```
 
-## 7. Telemetry and Integration Status
+**Observed result:** HTTP `403 Forbidden`
 
-The reference application is integrated with the Wotmed-Net security and telemetry layers. Controlled testing confirms that requests to deceptive endpoints produce both the corresponding security events and telemetry observations.
-
-Current operational status:
-
-- Local telemetry: VERIFIED
-- Cloud telemetry storage: PENDING
-- SOC Dashboard integration: PENDING
-
-This indicates that the deception layer is functionally validated in the local environment, while final cloud-wide telemetry and dashboard integration remain dependent on the broader platform implementation.
+**Status:** IMPLEMENTED — VERIFIED
 
 ---
 
-## 8. Verification Results
+### 4.3 Decoy Administrative Resource
 
-Controlled local testing confirmed the following behavior:
+**Route:**
 
-| Test                         | Result                             | Status   |
-| ---------------------------- | ---------------------------------- | -------- |
-| `/api/departments`           | HTTP 200                           | VERIFIED |
-| `/api/deception/canary`      | `canary_triggered` + HTTP 403      | VERIFIED |
-| `/api/deception/canary-file` | `canary_file_triggered` + HTTP 403 | VERIFIED |
-| `/api/deception/decoy-admin` | `decoy_admin_triggered` + HTTP 403 | VERIFIED |
-| `/api/deception/honeytoken`  | `honeytoken_triggered` + HTTP 403  | VERIFIED |
+```text
+GET /api/deception/decoy-admin
+```
 
-The results demonstrate that normal application traffic remains functional while deceptive assets generate measurable alert signals and deny access.
+**Security event:**
+
+```text
+decoy_admin_triggered
+```
+
+**Observed result:** HTTP `403 Forbidden`
+
+**Status:** IMPLEMENTED — VERIFIED
+
+---
+
+### 4.4 Honeytoken Detection
+
+**Route:**
+
+```text
+GET /api/deception/honeytoken
+```
+
+The controlled honeytoken used for verification is:
+
+```text
+WOTMED-DECOY-ADMIN-TOKEN-001
+```
+
+**Security event:**
+
+```text
+honeytoken_triggered
+```
+
+**Observed result:** HTTP `403 Forbidden`
+
+**Status:** IMPLEMENTED — VERIFIED
+
+---
+
+## 5. Security Event Generation
+
+Interactions with the implemented deception resources generate structured security events.
+
+The events currently contain request and resource information including:
+
+* event type;
+* deception resource;
+* HTTP method;
+* source IP address;
+* User-Agent; and
+* timestamp.
+
+For example, accessing the canary route produces a `canary_triggered` event identifying the deception resource and relevant request information.
+
+These events provide an observable security signal for controlled validation and subsequent telemetry integration.
+
+---
+
+## 6. Wotmed-Net Telemetry Observation
+
+The reference application is integrated with the Wotmed-Net security and telemetry layers.
+
+During controlled localhost verification, requests to the deception routes produced Wotmed-Net telemetry observations together with the corresponding deception security events.
+
+The current development environment reports that Supabase credentials are not configured. Consequently, telemetry is currently operating in local-buffer/observation mode rather than verified cloud storage.
+
+**Status:** IMPLEMENTED — LOCAL TELEMETRY VERIFIED
+
+### Pending Project Integration
+
+The following items remain pending broader Wotmed-Net integration:
+
+* final telemetry event-schema mapping;
+* final cloud telemetry storage verification;
+* end-to-end telemetry delivery;
+* SOC Dashboard reception and display; and
+* final end-to-end evidence after Backend/Telemetry integration.
+
+---
+
+## 7. Verification Testing
+
+Controlled localhost testing was performed against both normal application traffic and the implemented deception resources.
+
+| Test                         | Expected Result             | Observed Result                      | Status                 |
+| ---------------------------- | --------------------------- | ------------------------------------ | ---------------------- |
+| `/api/departments`           | Normal application response | HTTP `200`                           | IMPLEMENTED — VERIFIED |
+| `/api/deception/canary`      | Security event + block      | `canary_triggered` + HTTP `403`      | IMPLEMENTED — VERIFIED |
+| `/api/deception/canary-file` | Security event + block      | `canary_file_triggered` + HTTP `403` | IMPLEMENTED — VERIFIED |
+| `/api/deception/decoy-admin` | Security event + block      | `decoy_admin_triggered` + HTTP `403` | IMPLEMENTED — VERIFIED |
+| `/api/deception/honeytoken`  | Honeytoken event + block    | `honeytoken_triggered` + HTTP `403`  | IMPLEMENTED — VERIFIED |
+
+The tests demonstrate that normal application traffic can return a successful application response while controlled interactions with deception resources generate the expected security events and access-denied responses.
+
+---
+
+## 8. Verification Status
+
+### IMPLEMENTED — VERIFIED
+
+* Student Management reference application integration
+* Wotmed-Net defense layer integration
+* Wotmed-Net security middleware integration
+* Canary deception
+* Canary file deception
+* Decoy administrative resource
+* Honeytoken detection
+* Security event generation
+* Local Wotmed-Net telemetry observation
+* Normal application request verification
+* HTTP `403 Forbidden` responses from verified deception routes
+* Controlled localhost verification
+* Verification evidence collection
+
+### PENDING PROJECT INTEGRATION
+
+* Final telemetry event-schema mapping
+* Final cloud telemetry storage verification
+* End-to-end telemetry delivery
+* SOC Dashboard reception and display
+* Final end-to-end evidence after Backend/Telemetry integration
 
 ---
 
 ## 9. Scope and Responsibilities
 
-The responsibilities of the Demo App & Deception Tester include:
+The **Demo App & Deception Tester** responsibility covers:
 
-- integrating the reference application with the Wotmed-Net enforcement layer
-- implementing deceptive assets and controlled attack surfaces
-- generating structured security events
-- verifying suspicious interaction behavior
-- documenting test evidence and implementation status
+* integrating the reference application with the Wotmed-Net defense layer;
+* implementing controlled deception resources;
+* generating structured security events;
+* verifying deception-triggered behavior;
+* testing normal versus deceptive application traffic;
+* collecting verification evidence; and
+* documenting implementation and verification status.
 
-Final cloud telemetry and SOC Dashboard integration remain dependent on the Backend/Telemetry and Dashboard components of the project.
+The final telemetry pipeline and SOC Dashboard integration depend on the corresponding Wotmed-Net Backend/Telemetry and SOC Dashboard components.
+
+Accordingly, cloud telemetry storage and dashboard display are not marked as verified until the remaining project-wide integration has been completed and tested.
 
 ---
 
 ## 10. Evidence and Validation Basis
 
-The implemented functionality is supported by controlled request testing and backend observations confirming that:
+The implemented functionality is supported by controlled request testing and backend observations demonstrating:
 
-1. deception routes are reachable
-2. expected security events are generated
-3. telemetry is observed locally
-4. requests to deceptive resources are denied with HTTP 403
-5. normal application traffic continues to succeed
+1. access to the implemented deception routes;
+2. generation of the expected security events;
+3. Wotmed-Net telemetry observation;
+4. HTTP `403 Forbidden` responses from verified deception resources; and
+5. successful normal application traffic with HTTP `200`.
 
-This evidence validates the deception layer in its current development stage and supports the claim that it is functionally effective before final cloud integration is completed.
+Evidence was collected from the local development environment using controlled requests and backend runtime output.
 
----
-
-## 11. Final Status
-
-| Component                      | Status   |
-| ------------------------------ | -------- |
-| Student Management application | VERIFIED |
-| Wotmed-Net defense integration | VERIFIED |
-| Canary endpoint                | VERIFIED |
-| Canary file resource           | VERIFIED |
-| Decoy admin resource           | VERIFIED |
-| Honeytoken detection           | VERIFIED |
-| Security event generation      | VERIFIED |
-| Local telemetry observation    | VERIFIED |
-| Cloud telemetry storage        | PENDING  |
-| SOC dashboard integration      | PENDING  |
+This evidence supports the current implementation and verification status without claiming completion of the final cloud telemetry and SOC Dashboard pipeline.
 
 ---
 
-## Closing Statement
+## 11. Implementation Summary
 
-The Demo App & Deception layer has successfully demonstrated the core deception-driven monitoring model within a controlled application environment. The implementation is functional, measurable, and aligned with the strategic objectives of Wotmed-Net. The remaining work is limited to system-wide integration with telemetry and dashboard components, not to a failure of the deception layer itself.
+| Component                                | Status                      |
+| ---------------------------------------- | --------------------------- |
+| Student Management reference application | IMPLEMENTED — VERIFIED      |
+| Wotmed-Net defense integration           | IMPLEMENTED — VERIFIED      |
+| Wotmed-Net security middleware           | IMPLEMENTED — VERIFIED      |
+| Canary endpoint                          | IMPLEMENTED — VERIFIED      |
+| Canary file resource                     | IMPLEMENTED — VERIFIED      |
+| Decoy administrative resource            | IMPLEMENTED — VERIFIED      |
+| Honeytoken detection                     | IMPLEMENTED — VERIFIED      |
+| Security event generation                | IMPLEMENTED — VERIFIED      |
+| Local telemetry observation              | IMPLEMENTED — VERIFIED      |
+| Cloud telemetry storage                  | PENDING PROJECT INTEGRATION |
+| SOC Dashboard integration                | PENDING PROJECT INTEGRATION |
+| Final end-to-end telemetry test          | PENDING PROJECT INTEGRATION |
+
+---
+
+## 12. Current Conclusion
+
+The Demo App & Deception Layer has successfully demonstrated the core deception-driven monitoring workflow within the controlled Student Management reference application.
+
+The implemented deception mechanisms are locally functional and verified through reproducible testing. Each verified deception resource generates its corresponding security event and returns an access-denied response, while normal application traffic continues to function.
+
+The remaining documented work concerns integration with the final project-wide telemetry pipeline and SOC Dashboard. Those components will be marked verified only after their corresponding end-to-end integration and evidence have been completed.
+
