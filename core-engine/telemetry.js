@@ -9,6 +9,8 @@ const EventEmitter = require('events');
 class WotmedTelemetry extends EventEmitter {
   constructor() {
     super();
+    this.history = []; // In-memory buffer for recent history
+    
     // Initialize Supabase client using environment variables
     const supabaseUrl = process.env.SUPABASE_URL || '';
     const supabaseKey = process.env.SUPABASE_SERVICE_KEY || '';
@@ -35,6 +37,12 @@ class WotmedTelemetry extends EventEmitter {
       created_at: incidentData.evaluationResult.timestamp
     };
 
+    // Add to in-memory history (keep last 100)
+    this.history.unshift(payload);
+    if (this.history.length > 100) {
+      this.history.pop();
+    }
+
     // Broadcast event locally for WebSocket listeners
     this.emit('incident', payload);
 
@@ -53,6 +61,10 @@ class WotmedTelemetry extends EventEmitter {
       // Local fallback telemetry stream output
       console.log('[Wotmed SOC Telemetry Stream]:', JSON.stringify(payload, null, 2));
     }
+  }
+
+  getHistory() {
+    return this.history;
   }
 }
 

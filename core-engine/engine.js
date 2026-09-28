@@ -27,6 +27,14 @@ class WotmedEngine {
       baseScore += 75;
       flags.push('XSS_EXECUTION_VECTOR');
     }
+    if (requestContext.hasPathTraversal) {
+      baseScore += 85;
+      flags.push('PATH_TRAVERSAL_ATTEMPT');
+    }
+    if (requestContext.hasSSRF) {
+      baseScore += 80;
+      flags.push('SSRF_ATTEMPT');
+    }
     if (requestContext.hasHeaderAnomaly) {
       baseScore += 30;
       flags.push('ABNORMAL_HEADER_ORDER');
@@ -36,6 +44,12 @@ class WotmedEngine {
     if (requestContext.tlsFingerprintMismatch) {
       baseScore += 90;
       flags.push('TLS_SESSION_FINGERPRINT_MISMATCH');
+    }
+
+    // 2.5 Brute Force / Rate Limit Verification
+    if (requestContext.isBruteForce) {
+      baseScore += 70;
+      flags.push('BRUTE_FORCE_ATTACK');
     }
 
     // 3. Canary Token Violation Check

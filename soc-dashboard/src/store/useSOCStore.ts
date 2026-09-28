@@ -4,7 +4,7 @@ export interface ThreatEvent {
   id: string;
   ip: string;
   threatType: string;
-  payloadHash: string;
+  tlsFingerprint: string;
   scoreDelta: number;
   location: {
     country: string;
@@ -32,9 +32,16 @@ export const useSOCStore = create<SOCStore>((set, get) => ({
   isConnected: false,
   activeFilter: 'ALL',
 
-  addThreatEvent: (event) => set((state) => ({
-    threats: [event, ...state.threats].slice(0, 100), // Rolling buffer capped at 100
-  })),
+  addThreatEvent: (event) => set((state) => {
+    // Prevent duplicate entries (handles React StrictMode double-fetch and WebSocket race conditions)
+    if (state.threats.some(t => t.id === event.id)) {
+      return state;
+    }
+    
+    return {
+      threats: [event, ...state.threats].slice(0, 100), // Rolling buffer capped at 100
+    };
+  }),
 
   setConnected: (connected) => set({ isConnected: connected }),
 

@@ -6,6 +6,7 @@
 class WotmedInterceptor {
   constructor() {
     // Standard initialization for request boundary wrapping
+    this.rateLimits = new Map();
   }
 
   intercept(req, res, next) {
@@ -19,6 +20,27 @@ class WotmedInterceptor {
     const query = req.query;
     const body = req.body;
     const headers = req.headers;
+
+    // OWASP A07: Identification and Authentication Failures (Brute Force Protection)
+    const now = Date.now();
+    let isBruteForce = false;
+    
+    if (!this.rateLimits.has(clientIp)) {
+      this.rateLimits.set(clientIp, { count: 1, windowStart: now });
+    } else {
+      const record = this.rateLimits.get(clientIp);
+      // 60-second window
+      if (now - record.windowStart < 60000) {
+        record.count++;
+        if (record.count > 50) {
+          isBruteForce = true; // Over 50 requests per minute from one IP
+        }
+      } else {
+        // Reset window
+        record.count = 1;
+        record.windowStart = now;
+      }
+    }
 
     // 2. Capture Immutable TLS / JA3 Handshake Fingerprint (simulated via header heuristics or socket properties)
     const tlsFingerprint = req.socket.getPeerCertificate ? 
@@ -47,6 +69,7 @@ class WotmedInterceptor {
       body,
       headers,
       tlsFingerprint,
+      isBruteForce,
       arrivalTime: startTime
     };
 

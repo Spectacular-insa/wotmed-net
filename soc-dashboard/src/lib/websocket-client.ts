@@ -83,7 +83,7 @@ class WebSocketClient {
     }
   }
 
-  private convertToThreatEvent(data: any): ThreatEvent {
+  public convertToThreatEvent(data: any): ThreatEvent {
     // Map action_taken to our frontend severity badges
     let severity: 'INFO' | 'TARPIT' | 'CRITICAL' | 'BLOCKED' = 'INFO';
     if (data.action_taken === 'BLOCK_AND_REDIRECT_HONEYPOT') severity = 'BLOCKED';
@@ -99,7 +99,7 @@ class WebSocketClient {
       id: data.incident_id || `threat-${Date.now()}`,
       ip: data.client_ip || 'Unknown IP',
       threatType: threatType,
-      payloadHash: data.tls_fingerprint || 'N/A', // Using TLS fingerprint as a stand-in for payload hash
+      tlsFingerprint: data.tls_fingerprint || 'N/A',
       scoreDelta: data.threat_score || 0,
       location: {
         country: 'Local/Unknown', // Middleware doesn't currently do GeoIP, so default this

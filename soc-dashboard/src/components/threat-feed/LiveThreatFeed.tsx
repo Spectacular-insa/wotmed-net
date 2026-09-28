@@ -3,11 +3,37 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSOCStore } from '@/store/useSOCStore';
 import { getWebSocketClient } from '@/lib/websocket-client';
+import { getAPIClient } from '@/lib/api-client';
 
 export default function LiveThreatFeed() {
   const { threats, isConnected, activeFilter, addThreatEvent, setConnected, clearFeed, setActiveFilter, getFilteredThreats } = useSOCStore();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Fetch historical incidents on load
+    const fetchHistory = async () => {
+      try {
+        const history = await getAPIClient().getThreatLogs();
+        if (Array.isArray(history)) {
+          const wsClient = getWebSocketClient();
+          // The array comes newest first from the backend (unshifted)
+          // We need to reverse it so the oldest is added first, and newest is on top
+          [...history].reverse().forEach(incident => {
+            const parsed = wsClient.convertToThreatEvent(incident);
+            addThreatEvent(parsed);
+          });
+        }
+      } catch (err) {
+        console.error("Failed to fetch historical telemetry:", err);
+      }
+    };
+    
+    // Only fetch if feed is currently empty
+    if (useSOCStore.getState().threats.length === 0) {
+      fetchHistory();
+    }
+  }, []);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -118,20 +144,20 @@ export default function LiveThreatFeed() {
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${severityColors[threat.severity]}`}>
+                      <span className={`px-2 py-1 rounded text-sm font-bold ${severityColors[threat.severity]}`}>
                         {threat.severity}
                       </span>
-                      <span className="text-sm text-slate-300">{threat.threatType}</span>
+                      <span className="text-base font-bold text-slate-100">{threat.threatType}</span>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-xs text-slate-400 font-mono">{threat.ip}</p>
-                      <p className="text-xs text-slate-500">{threat.location.country}</p>
-                      <p className="text-xs text-slate-600">Hash: {threat.payloadHash}</p>
+                      <p className="text-sm font-bold text-slate-200 font-mono">IP: {threat.ip}</p>
+                      <p className="text-sm font-semibold text-slate-300">Location: {threat.location.country}</p>
+                      <p className="text-sm font-bold text-slate-400 font-mono">TLS: {threat.tlsFingerprint}</p>
                     </div>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <p className="text-xs text-slate-400">{new Date(threat.timestamp).toLocaleTimeString()}</p>
-                    <p className="text-xs text-slate-500">Score: {threat.scoreDelta}</p>
+                    <p className="text-sm font-bold text-slate-200">{new Date(threat.timestamp).toLocaleTimeString()}</p>
+                    <p className="text-sm font-bold text-slate-300 mt-1">Score: <span className="text-white">{threat.scoreDelta}</span></p>
                   </div>
                 </div>
               </div>

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { Shield, AlertTriangle, MapPin, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Shield, AlertTriangle, MapPin, Settings, ChevronLeft, ChevronRight, BarChart2 } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -22,7 +22,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { id: '/', icon: Shield, label: 'Dashboard', href: '/' },
     { id: '/feed', icon: AlertTriangle, label: 'Threat Feed', href: '/feed' },
     { id: '/map', icon: MapPin, label: 'Threat Map', href: '/map' },
-    { id: '/analytics', icon: Settings, label: 'Analytics', href: '/analytics' },
+    { id: '/analytics', icon: BarChart2, label: 'Analytics', href: '/analytics' },
     { id: '/settings', icon: Settings, label: 'Settings', href: '/settings' },
   ];
 
@@ -90,15 +90,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="h-16 bg-[#090d16] border-b border-slate-800 flex items-center justify-between px-6">
+        <header className="h-14 bg-[#090d16] border-b border-slate-800 flex items-center justify-between px-6">
           <div className="flex items-center gap-3">
             {/* Generic Shield Icon */}
-            <div className="w-10 h-10 bg-sky-500/20 rounded-lg flex items-center justify-center">
-              <Shield className="w-6 h-6 text-sky-500" />
+            <div className="w-8 h-8 bg-sky-500/20 rounded-lg flex items-center justify-center">
+              <Shield className="w-5 h-5 text-sky-500" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-slate-100">Wotmed-Net</h1>
-              <p className="text-xs text-slate-400">SOC Dashboard</p>
+              <h1 className="text-lg font-bold text-slate-100 leading-tight">Wotmed-Net</h1>
+              <p className="text-[11px] text-slate-400 leading-tight">SOC Dashboard</p>
             </div>
           </div>
 

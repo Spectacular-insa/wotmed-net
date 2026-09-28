@@ -21,6 +21,13 @@ app.get('/', (req, res) => {
   });
 });
 
+// Telemetry History Endpoint for SOC Dashboard
+app.get('/api/v1/telemetry/logs', (req, res) => {
+  // Allow CORS for the dashboard
+  res.header("Access-Control-Allow-Origin", "*");
+  res.json(telemetryInstance.getHistory());
+});
+
 // Mock Vulnerable Endpoint for Testing Attacks
 app.post('/api/v1/auth/login', (req, res) => {
   res.json({
