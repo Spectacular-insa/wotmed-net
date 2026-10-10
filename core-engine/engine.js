@@ -5,7 +5,7 @@
 
 class WotmedEngine {
   constructor() {
-    // Scoring thresholds defined in architectural contract[cite: 3]
+    // Scoring thresholds defined in architectural contract
     this.THRESHOLDS = {
       CLEAN: 0,
       WARNING_MAX: 49,
@@ -18,7 +18,7 @@ class WotmedEngine {
     let baseScore = 0;
     const flags = [];
 
-    // 1. Analyze Heuristic Payload Anomalies
+    // 1. Analyze Heuristic Payload & Tool Anomalies
     if (requestContext.hasSqlInjection) {
       baseScore += 85;
       flags.push('SQL_INJECTION_SIGNATURE');
@@ -27,6 +27,7 @@ class WotmedEngine {
       baseScore += 75;
       flags.push('XSS_EXECUTION_VECTOR');
     }
+ feature/soc-dashboard
     if (requestContext.hasPathTraversal) {
       baseScore += 85;
       flags.push('PATH_TRAVERSAL_ATTEMPT');
@@ -34,6 +35,11 @@ class WotmedEngine {
     if (requestContext.hasSSRF) {
       baseScore += 80;
       flags.push('SSRF_ATTEMPT');
+=======
+    if (requestContext.hasAutomatedScanner) {
+      baseScore += 90;
+      flags.push('AUTOMATED_SCANNER_SIGNATURE');
+ main
     }
     if (requestContext.hasHeaderAnomaly) {
       baseScore += 30;
@@ -71,13 +77,13 @@ class WotmedEngine {
 
   determineCountermeasure(score) {
     if (score >= this.THRESHOLDS.BLOCK_MIN) {
-      return 'BLOCK_AND_REDIRECT_HONEYPOT'; // Score 80-100[cite: 3]
+      return 'BLOCK_AND_REDIRECT_HONEYPOT'; // Score 80-100
     } else if (score > this.THRESHOLDS.WARNING_MAX) {
-      return 'AUTONOMOUS_DYNAMIC_TARPIT'; // Score 50-79[cite: 3]
+      return 'AUTONOMOUS_DYNAMIC_TARPIT'; // Score 50-79
     } else if (score > this.THRESHOLDS.CLEAN) {
-      return 'MONITOR_AND_LOG_WARNING'; // Score 1-49[cite: 3]
+      return 'MONITOR_AND_LOG_WARNING'; // Score 1-49
     }
-    return 'ALLOW_AND_INJECT_CANARY'; // Score 0[cite: 3]
+    return 'ALLOW_AND_INJECT_CANARY'; // Score 0
   }
 }
 
