@@ -1,80 +1,260 @@
+
 /**
  * Wotmed-Net Telemetry & Asynchronous Dispatcher
- * Architect: Ayitegeb Tilahun Demisie
+ * Architect: Ayitegeb Tilahun Demissie
+ *
+ * Features:
+ * - Persistent incident storage in Supabase
+ * - Historical incident loading after server restarts
+ * - Real-time incident events
+ * - Bounded in-memory history cache
+ * - Deduplication by incident_id
  */
 
 const { createClient } = require('@supabase/supabase-js');
 const EventEmitter = require('events');
+const { randomUUID } = require('crypto');
+
+const MAX_HISTORY = 100;
+const TABLE_NAME = 'wotmed_incidents';
 
 class WotmedTelemetry extends EventEmitter {
   constructor() {
- feature/soc-dashboard
     super();
-    this.history = []; // In-memory buffer for recent history
-    
-    // Initialize Supabase client using environment variables
-    const supabaseUrl = process.env.SUPABASE_URL || '';
-    const supabaseKey = process.env.SUPABASE_SERVICE_KEY || '';
-=======
-    // Support standard, service key, and NEXT_PUBLIC naming conventions
-    const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-    const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || '';
- main
-    
-    if (supabaseUrl && supabaseKey) {
-      this.supabase = createClient(supabaseUrl, supabaseKey);
-      console.log('[Wotmed-Net Telemetry]: Connected to Supabase Cloud.');
-    } else {
-      this.supabase = null;
-      console.warn('[Wotmed-Net Warning]: Supabase credentials not found. Telemetry running in local buffer mode.');
+
+    this.history = [];
+    this.supabase = null;
+    this.historyLoaded = false;
+    this.historyLoadPromise = null;
+
+    const supabaseUrl =
+      process.env.SUPABASE_URL ||
+      process.env.NEXT_PUBLIC_SUPABASE_URL ||
+      '';
+
+    // Privileged credentials must remain server-side.
+    const supabaseKey =
+      process.env.SUPABASE_SECRET_KEY ||
+      process.env.SUPABASE_SERVICE_ROLE_KEY ||
+      process.env.SUPABASE_SERVICE_KEY ||
+      process.env.SUPABASE_ANON_KEY ||
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+      '';
+
+    if (!supabaseUrl || !supabaseKey) {
+      console.warn(
+        '[Wotmed-Net Warning]: Supabase credentials missing. ' +
+        'Using local in-memory telemetry.'
+      );
+      return;
+    }
+
+    this.supabase = createClient(supabaseUrl, supabaseKey);
+
+    console.log(
+      '[Wotmed-Net Telemetry]: Supabase client initialized.'
+    );
+
+    // Begin restoring previously saved incidents at startup.
+    // The API endpoint will also await this operation when necessary.
+    this.loadHistory().catch(() => {
+      // The underlying method logs the error.
+      // A later history request can retry the load.
+    });
+  }
+
+  /**
+   * Merge records by stable incident ID, newest first.
+   * Existing live incidents are preserved if a history query
+   * finishes after new incidents have already arrived.
+   */
+  mergeHistory(records = []) {
+    const unique = new Map();
+
+    for (const record of [...this.history, ...records]) {
+      if (!record || !record.incident_id) {
+        continue;
+      }
+
+      if (!unique.has(record.incident_id)) {
+        unique.set(record.incident_id, record);
+      }
+    }
+
+    this.history = Array.from(unique.values())
+      .sort((a, b) => {
+        const dateA = new Date(a.created_at || 0).getTime();
+        const dateB = new Date(b.created_at || 0).getTime();
+
+        return dateB - dateA;
+      })
+      .slice(0, MAX_HISTORY);
+  }
+
+  /**
+   * Restore saved incidents from Supabase.
+   * Concurrent requests share one history-loading operation.
+   */
+  async loadHistory() {
+    if (this.historyLoaded) {
+      return;
+    }
+
+    if (this.historyLoadPromise) {
+      return this.historyLoadPromise;
+    }
+
+    if (!this.supabase) {
+      this.historyLoaded = true;
+      return;
+    }
+
+    this.historyLoadPromise = (async () => {
+      const { data, error } = await this.supabase
+        .from(TABLE_NAME)
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(MAX_HISTORY);
+
+      if (error) {
+        console.error(
+          '[Wotmed Telemetry History Error]:',
+          error.message
+        );
+
+        throw error;
+      }
+
+      this.mergeHistory(Array.isArray(data) ? data : []);
+      this.historyLoaded = true;
+
+      console.log(
+        `[Wotmed Telemetry]: Restored ${this.history.length} historical incidents from Supabase.`
+      );
+    })();
+
+    try {
+      await this.historyLoadPromise;
+    } finally {
+      this.historyLoadPromise = null;
     }
   }
 
-  async emitIncident(incidentData) {
+  /**
+   * Create, broadcast, and persist a new incident.
+   */
+  async emitIncident(incidentData = {}) {
+    const requestContext = incidentData.requestContext || {};
+    const evaluationResult = incidentData.evaluationResult || {};
+
+    const score = Number(evaluationResult.threatScore ?? 0);
+
+    const threatScore = Number.isFinite(score)
+      ? Math.max(0, Math.min(100, Math.round(score)))
+      : 0;
+
+    const triggeredFlags = Array.isArray(
+      evaluationResult.triggeredFlags
+    )
+      ? evaluationResult.triggeredFlags.map(String)
+      : [];
+
+    const parsedDate = evaluationResult.timestamp
+      ? new Date(evaluationResult.timestamp)
+      : new Date();
+
+    const createdAt = Number.isNaN(parsedDate.getTime())
+      ? new Date().toISOString()
+      : parsedDate.toISOString();
+
     const payload = {
-      incident_id: `inc_${Math.random().toString(36).substring(2, 10)}_${Date.now()}`,
-      client_ip: incidentData.requestContext.clientIp || '127.0.0.1',
-      user_agent: incidentData.requestContext.userAgent || 'UNKNOWN',
-      path: incidentData.requestContext.path,
-      method: incidentData.requestContext.method,
-      tls_fingerprint: incidentData.requestContext.tlsFingerprint || 'AUTOMATED_CLIENT_TLS',
-      threat_score: incidentData.evaluationResult.threatScore,
-      action_taken: incidentData.evaluationResult.actionTaken,
-      triggered_flags: incidentData.evaluationResult.triggeredFlags,
-      created_at: incidentData.evaluationResult.timestamp
+      incident_id: `inc_${randomUUID()}`,
+      client_ip: String(
+        requestContext.clientIp || '127.0.0.1'
+      ),
+      user_agent: String(
+        requestContext.userAgent || 'UNKNOWN'
+      ),
+      request_path: String(
+        requestContext.path || '/'
+      ),
+      request_method: String(
+        requestContext.method || 'UNKNOWN'
+      ).toUpperCase(),
+      tls_fingerprint: String(
+        requestContext.tlsFingerprint ||
+        'AUTOMATED_CLIENT_TLS'
+      ),
+      threat_score: threatScore,
+      action_taken: String(
+        evaluationResult.actionTaken || 'UNKNOWN'
+      ),
+      triggered_flags: triggeredFlags,
+      created_at: createdAt
     };
 
-    // Add to in-memory history (keep last 100)
-    this.history.unshift(payload);
-    if (this.history.length > 100) {
-      this.history.pop();
-    }
+    // Update local history immediately.
+    this.mergeHistory([payload]);
 
-    // Broadcast event locally for WebSocket listeners
+    // Broadcast the same incident ID used by the database.
     this.emit('incident', payload);
 
-    // Asynchronous emission to backend database / SOC pipeline without blocking response execution
-    if (this.supabase) {
-      this.supabase
-        .from('telemetry_logs') // Matches your Supabase table name
-        .insert([payload])
-        .then(({ error }) => {
-          if (error) console.error('[Wotmed Telemetry Error]:', error.message);
-        })
-        .catch(err => {
-          console.error('[Wotmed Telemetry Network Exception]:', err.message);
-        });
-    } else {
-      // Local fallback telemetry stream output
-      console.log('[Wotmed SOC Telemetry Stream]:', JSON.stringify(payload, null, 2));
+    // Persist to Supabase when configured.
+    if (!this.supabase) {
+      console.log(
+        '[Wotmed SOC Telemetry Stream - Local Only]:',
+        JSON.stringify(payload, null, 2)
+      );
+
+      return payload;
     }
+
+    try {
+      const { error } = await this.supabase
+        .from(TABLE_NAME)
+        .insert([payload]);
+
+      if (error) {
+        console.error(
+          '[Wotmed Telemetry Database Error]:',
+          error.message
+        );
+      } else {
+        console.log(
+          `[Wotmed Telemetry]: Incident ${payload.incident_id} saved to Supabase.`
+        );
+      }
+    } catch (error) {
+      console.error(
+        '[Wotmed Telemetry Network Exception]:',
+        error instanceof Error
+          ? error.message
+          : String(error)
+      );
+    }
+
+    return payload;
   }
 
-  getHistory() {
-    return this.history;
+  /**
+   * Return recent incidents, restoring them from Supabase first.
+   * Callers must await this method.
+   */
+  async getHistory() {
+    try {
+      await this.loadHistory();
+    } catch {
+      // Return any available in-memory incidents if Supabase
+      // cannot be reached. loadHistory() already logged the error.
+    }
+
+    return this.history.map((incident) => ({
+      ...incident,
+      triggered_flags: Array.isArray(incident.triggered_flags)
+        ? [...incident.triggered_flags]
+        : []
+    }));
   }
 }
 
-// Export as a singleton so both the middleware and the WebSocket server can access the same instance
-const telemetryInstance = new WotmedTelemetry();
-module.exports = telemetryInstance;
+module.exports = new WotmedTelemetry();

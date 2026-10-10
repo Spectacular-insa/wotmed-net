@@ -1,6 +1,7 @@
+
 /**
  * Wotmed-Net Master Active Defense Middleware
- * Architect: Ayitegeb Tilahun Demisie
+ * Architect: Ayitegeb Tilahun Demissie
  */
 
 const WotmedInterceptor = require('../core-engine/interceptor');
@@ -15,62 +16,88 @@ class WotmedDefenseMiddleware {
     this.engine = new WotmedEngine();
   }
 
-  // Returns the configured Express middleware stack
+  // Returns the configured Express middleware stack.
   handle() {
-    return async (req, res, next) => {
-      // 1. Intercept and normalize request context
+    return (req, res, next) => {
       this.interceptor.intercept(req, res, async () => {
         try {
+          // 1. Retrieve the normalized request context.
           const requestContext = req.wotmedContext;
 
-          // 2. Perform heuristic payload and anomaly inspection
+          // 2. Inspect the request for suspicious patterns and anomalies.
           const inspectionResult = this.inspector.inspect(requestContext);
 
-          // Merge inspection results into context for engine evaluation
+          // 3. Combine context and inspection findings for threat evaluation.
           const evaluationInput = {
             ...requestContext,
-            ...inspectionResult
+            ...inspectionResult,
           };
 
-          // 3. Evaluate threat score and select countermeasure
           const evaluationResult = this.engine.evaluate(evaluationInput);
 
-          // 4. Dispatch asynchronous telemetry event
-          telemetryInstance.emitIncident({
-            requestContext,
-            evaluationResult
-          });
+          // 4. Record the incident for telemetry and dashboard reporting.
+          // Telemetry errors should not turn a blocked request into HTTP 500.
+          try {
+            telemetryInstance.emitIncident({
+              requestContext,
+              evaluationResult,
+            });
+          } catch (telemetryError) {
+            console.error(
+              '[Wotmed Telemetry Dispatch Error]:',
+              telemetryError
+            );
+          }
 
-          // 5. Enforce Countermeasures based on Evaluated Action
+          // 5. Enforce the selected countermeasure.
           switch (evaluationResult.actionTaken) {
-            case 'BLOCK_AND_REDIRECT_HONEYPOT':
-              // High risk: Return deceptive honeypot payload and terminate execution
-              return res.status(500).json({
-                error: 'Database transaction execution fault',
-                driver: 'PostgreSQL 14.2 Kernel Panic',
-                query_trace: 'ERR_SYNTAX_VIOLATION_AT_EDGE_NODE',
-                incident_ref: evaluationResult.timestamp
+            case 'BLOCK_AND_REDIRECT_HONEYPOT': {
+              // Block the request and do not pass it to the route handler.
+              return res.status(403).json({
+                error: 'Request blocked by Wotmed-Net',
+                code: 'THREAT_BLOCKED',
+                message: 'The request was rejected by the security gateway.',
+                incident_ref: evaluationResult.timestamp || null,
               });
+            }
 
-            case 'AUTONOMOUS_DYNAMIC_TARPIT':
-              // Moderate risk: Scale response latency continuously to drain attacker resources
-              const tarpitDelay = Math.floor(Math.random() * 2000) + 1000; // 1s to 3s delay
-              await new Promise(resolve => setTimeout(resolve, tarpitDelay));
-              return res.status(200).json({
-                status: 'degraded',
-                message: 'Processing queue bottlenecked. Retrying operation...',
-                gateway: 'Wotmed-Net-Tarpit-Node'
+            case 'AUTONOMOUS_DYNAMIC_TARPIT': {
+              // Apply a bounded delay to suspicious requests.
+              const tarpitDelay =
+                Math.floor(Math.random() * 2000) + 1000;
+
+              await new Promise((resolve) =>
+                setTimeout(resolve, tarpitDelay)
+              );
+
+              if (res.headersSent || res.writableEnded) {
+                return;
+              }
+
+              return res.status(429).json({
+                status: 'delayed',
+                code: 'REQUEST_THROTTLED',
+                message: 'Request delayed by the Wotmed-Net security gateway.',
+                incident_ref: evaluationResult.timestamp || null,
               });
+            }
 
             case 'MONITOR_AND_LOG_WARNING':
             case 'ALLOW_AND_INJECT_CANARY':
-            default:
-              // Safe or low risk: Pass request forward to normal application controllers
+            default: {
+              // Allow requests not selected for blocking or throttling.
               return next();
+            }
           }
         } catch (err) {
           console.error('[Wotmed Middleware Execution Error]:', err);
-          return next();
+
+          // Do not attempt to send another response if one has already started.
+          if (res.headersSent || res.writableEnded) {
+            return;
+          }
+
+          return next(err);
         }
       });
     };

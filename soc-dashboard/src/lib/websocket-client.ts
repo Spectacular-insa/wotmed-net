@@ -1,7 +1,7 @@
+
 import { getAPIClient } from './api-client';
 import { ThreatEvent } from '@/store/useSOCStore';
 
-// Real WebSocket client for Wotmed-Net backend integration
 class WebSocketClient {
   private ws: WebSocket | null = null;
   private reconnectAttempts = 0;
@@ -11,59 +11,111 @@ class WebSocketClient {
   private isConnected = false;
 
   connect() {
+    // Avoid creating duplicate connections.
+    if (
+      this.ws &&
+      (this.ws.readyState === WebSocket.CONNECTING ||
+        this.ws.readyState === WebSocket.OPEN)
+    ) {
+      return;
+    }
+
     const wsURL = getAPIClient().getWebSocketURL();
+    let socket: WebSocket;
 
     try {
-      this.ws = new WebSocket(wsURL);
+      socket = new WebSocket(wsURL);
+      this.ws = socket;
 
-      this.ws.onopen = () => {
+      socket.onopen = () => {
+        // This socket may have been cancelled during React cleanup.
+        if (this.ws !== socket) {
+          socket.close();
+          return;
+        }
+
         this.isConnected = true;
         this.reconnectAttempts = 0;
         this.emit('connection_status', { status: 'connected' });
       };
 
-      this.ws.onmessage = (event) => {
+      socket.onmessage = (event) => {
+        if (this.ws !== socket) return;
+
         try {
-          const data = JSON.parse(event.data);
-          this.handleMessage(data);
-        } catch (error) {
-          // Silently handle parse errors
+          this.handleMessage(JSON.parse(event.data));
+        } catch {
+          // Ignore invalid JSON messages.
         }
       };
 
-      this.ws.onerror = (error) => {
-        this.emit('connection_status', { status: 'error', error: 'Connection error' });
+      socket.onerror = () => {
+        if (this.ws !== socket) return;
+
+        this.emit('connection_status', {
+          status: 'error',
+          error: 'Connection error',
+        });
       };
 
-      this.ws.onclose = () => {
+      socket.onclose = () => {
+        if (this.ws !== socket) return;
+
+        this.ws = null;
         this.isConnected = false;
         this.emit('connection_status', { status: 'disconnected' });
         this.attemptReconnect();
       };
-    } catch (error) {
-      this.emit('connection_status', { status: 'error', error: 'Failed to connect' });
+    } catch {
+      this.isConnected = false;
+      this.emit('connection_status', {
+        status: 'error',
+        error: 'Failed to connect',
+      });
     }
   }
 
   disconnect() {
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
-    }
+    const socket = this.ws;
+
+    // Invalidate this socket before closing it so stale callbacks are ignored.
+    this.ws = null;
     this.isConnected = false;
+
+    if (!socket) return;
+
+    socket.onmessage = null;
+    socket.onerror = null;
+    socket.onclose = null;
+
+    if (socket.readyState === WebSocket.CONNECTING) {
+      // Wait until the connection opens before closing it.
+      // This avoids closing a socket while its handshake is in progress.
+      socket.onopen = () => {
+        socket.onopen = null;
+        socket.close();
+      };
+    } else if (socket.readyState === WebSocket.OPEN) {
+      socket.onopen = null;
+      socket.close();
+    } else {
+      socket.onopen = null;
+    }
+
+    this.emit('connection_status', { status: 'disconnected' });
   }
 
   private attemptReconnect() {
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      return;
-    }
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) return;
 
     this.reconnectAttempts++;
-    const delay = Math.min(this.reconnectDelay * Math.pow(1.5, this.reconnectAttempts - 1), 30000);
 
-    setTimeout(() => {
-      this.connect();
-    }, delay);
+    const delay = Math.min(
+      this.reconnectDelay * Math.pow(1.5, this.reconnectAttempts - 1),
+      30000
+    );
+
+    setTimeout(() => this.connect(), delay);
   }
 
   private handleMessage(data: any) {
@@ -84,31 +136,35 @@ class WebSocketClient {
   }
 
   public convertToThreatEvent(data: any): ThreatEvent {
-    // Map action_taken to our frontend severity badges
     let severity: 'INFO' | 'TARPIT' | 'CRITICAL' | 'BLOCKED' = 'INFO';
-    if (data.action_taken === 'BLOCK_AND_REDIRECT_HONEYPOT') severity = 'BLOCKED';
-    else if (data.action_taken === 'AUTONOMOUS_DYNAMIC_TARPIT') severity = 'TARPIT';
-    else if (data.threat_score >= 80) severity = 'CRITICAL';
-    
-    // Extract the primary threat type from the flags array
-    const threatType = (data.triggered_flags && data.triggered_flags.length > 0) 
-      ? data.triggered_flags.join(', ') 
-      : 'ANOMALOUS_TRAFFIC';
+
+    if (data.action_taken === 'BLOCK_AND_REDIRECT_HONEYPOT') {
+      severity = 'BLOCKED';
+    } else if (data.action_taken === 'AUTONOMOUS_DYNAMIC_TARPIT') {
+      severity = 'TARPIT';
+    } else if (data.threat_score >= 80) {
+      severity = 'CRITICAL';
+    }
+
+    const threatType =
+      data.triggered_flags && data.triggered_flags.length > 0
+        ? data.triggered_flags.join(', ')
+        : 'ANOMALOUS_TRAFFIC';
 
     return {
       id: data.incident_id || `threat-${Date.now()}`,
       ip: data.client_ip || 'Unknown IP',
-      threatType: threatType,
+      threatType,
       tlsFingerprint: data.tls_fingerprint || 'N/A',
       scoreDelta: data.threat_score || 0,
       location: {
-        country: 'Local/Unknown', // Middleware doesn't currently do GeoIP, so default this
+        country: 'Local/Unknown',
         city: '',
         lat: 0,
         lng: 0,
       },
       timestamp: new Date(data.created_at || Date.now()),
-      severity: severity,
+      severity,
     };
   }
 
@@ -116,13 +172,16 @@ class WebSocketClient {
     if (!this.subscribers.has(event)) {
       this.subscribers.set(event, []);
     }
+
     this.subscribers.get(event)!.push(callback);
   }
 
   off(event: string, callback: Function) {
     const callbacks = this.subscribers.get(event);
+
     if (callbacks) {
       const index = callbacks.indexOf(callback);
+
       if (index > -1) {
         callbacks.splice(index, 1);
       }
@@ -131,8 +190,9 @@ class WebSocketClient {
 
   private emit(event: string, data: any) {
     const callbacks = this.subscribers.get(event);
+
     if (callbacks) {
-      callbacks.forEach(callback => callback(data));
+      [...callbacks].forEach((callback) => callback(data));
     }
   }
 
@@ -141,12 +201,12 @@ class WebSocketClient {
   }
 }
 
-// Singleton instance
 let webSocketClientInstance: WebSocketClient | null = null;
 
 export function getWebSocketClient(): WebSocketClient {
   if (!webSocketClientInstance) {
     webSocketClientInstance = new WebSocketClient();
   }
+
   return webSocketClientInstance;
 }
