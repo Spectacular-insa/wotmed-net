@@ -1,0 +1,1 @@
+export { securityInspector } from './middleware/inspector.js';

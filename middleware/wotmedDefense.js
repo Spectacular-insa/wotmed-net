@@ -6,14 +6,13 @@
 const WotmedInterceptor = require('../core-engine/interceptor');
 const WotmedInspector = require('../core-engine/inspector');
 const WotmedEngine = require('../core-engine/engine');
-const WotmedTelemetry = require('../core-engine/telemetry');
+const telemetryInstance = require('../core-engine/telemetry');
 
 class WotmedDefenseMiddleware {
   constructor() {
     this.interceptor = new WotmedInterceptor();
     this.inspector = new WotmedInspector();
     this.engine = new WotmedEngine();
-    this.telemetry = new WotmedTelemetry();
   }
 
   // Returns the configured Express middleware stack
@@ -37,7 +36,7 @@ class WotmedDefenseMiddleware {
           const evaluationResult = this.engine.evaluate(evaluationInput);
 
           // 4. Dispatch asynchronous telemetry event
-          this.telemetry.emit({
+          telemetryInstance.emitIncident({
             requestContext,
             evaluationResult
           });

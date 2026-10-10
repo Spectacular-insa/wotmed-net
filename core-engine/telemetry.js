@@ -4,12 +4,22 @@
  */
 
 const { createClient } = require('@supabase/supabase-js');
+const EventEmitter = require('events');
 
-class WotmedTelemetry {
+class WotmedTelemetry extends EventEmitter {
   constructor() {
+ feature/soc-dashboard
+    super();
+    this.history = []; // In-memory buffer for recent history
+    
+    // Initialize Supabase client using environment variables
+    const supabaseUrl = process.env.SUPABASE_URL || '';
+    const supabaseKey = process.env.SUPABASE_SERVICE_KEY || '';
+=======
     // Support standard, service key, and NEXT_PUBLIC naming conventions
     const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
     const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || '';
+ main
     
     if (supabaseUrl && supabaseKey) {
       this.supabase = createClient(supabaseUrl, supabaseKey);
@@ -20,7 +30,7 @@ class WotmedTelemetry {
     }
   }
 
-  async emit(incidentData) {
+  async emitIncident(incidentData) {
     const payload = {
       incident_id: `inc_${Math.random().toString(36).substring(2, 10)}_${Date.now()}`,
       client_ip: incidentData.requestContext.clientIp || '127.0.0.1',
@@ -33,6 +43,15 @@ class WotmedTelemetry {
       triggered_flags: incidentData.evaluationResult.triggeredFlags,
       created_at: incidentData.evaluationResult.timestamp
     };
+
+    // Add to in-memory history (keep last 100)
+    this.history.unshift(payload);
+    if (this.history.length > 100) {
+      this.history.pop();
+    }
+
+    // Broadcast event locally for WebSocket listeners
+    this.emit('incident', payload);
 
     // Asynchronous emission to backend database / SOC pipeline without blocking response execution
     if (this.supabase) {
@@ -50,6 +69,12 @@ class WotmedTelemetry {
       console.log('[Wotmed SOC Telemetry Stream]:', JSON.stringify(payload, null, 2));
     }
   }
+
+  getHistory() {
+    return this.history;
+  }
 }
 
-module.exports = WotmedTelemetry;
+// Export as a singleton so both the middleware and the WebSocket server can access the same instance
+const telemetryInstance = new WotmedTelemetry();
+module.exports = telemetryInstance;
