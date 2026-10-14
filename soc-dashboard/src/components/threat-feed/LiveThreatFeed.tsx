@@ -1,10 +1,9 @@
+"use client";
 
-'use client';
-
-import { useEffect, useRef, useState } from 'react';
-import { useSOCStore } from '@/store/useSOCStore';
-import { getWebSocketClient } from '@/lib/websocket-client';
-import { getAPIClient } from '@/lib/api-client';
+import { useEffect, useRef, useState } from "react";
+import { useSOCStore } from "@/store/useSOCStore";
+import { getWebSocketClient } from "@/lib/websocket-client";
+import { getAPIClient } from "@/lib/api-client";
 
 export default function LiveThreatFeed() {
   const {
@@ -27,23 +26,29 @@ export default function LiveThreatFeed() {
 
     const fetchHistory = async () => {
       try {
-        const history = await getAPIClient().getThreatLogs();
+        const response = await getAPIClient().getThreatLogs();
+        console.log("[WOTMED] Telemetry API response:", response);
 
-        if (cancelled || !Array.isArray(history)) return;
 
+        if (cancelled) return;
+
+        const history = Array.isArray(response) ? response : response?.logs;
+
+        if (!Array.isArray(history)) return;
         const wsClient = getWebSocketClient();
 
         const historicalEvents = [...history]
           .reverse()
           .map((incident) => wsClient.convertToThreatEvent(incident));
+          console.log("[WOTMED] Converted historical events:", historicalEvents);
 
         if (!cancelled) {
           useSOCStore.getState().addThreatEvents(historicalEvents);
         }
       } catch (error) {
         if (!cancelled) {
-          console.error('Failed to fetch historical telemetry:', error);
-          setConnectionError('Unable to load historical incidents');
+          console.error("Failed to fetch historical telemetry:", error);
+          setConnectionError("Unable to load historical incidents");
         }
       }
     };
@@ -67,37 +72,37 @@ export default function LiveThreatFeed() {
     const wsClient = getWebSocketClient();
 
     const handleThreatAlert = (event: any) => {
-      if (!event || typeof event !== 'object') return;
+      if (!event || typeof event !== "object") return;
 
       addThreatEvent(event);
       setConnectionError(null);
     };
 
     const handleConnectionStatus = (data: any) => {
-      if (data?.status === 'connected') {
+      if (data?.status === "connected") {
         setConnected(true);
         setConnectionError(null);
-      } else if (data?.status === 'error') {
+      } else if (data?.status === "error") {
         setConnected(false);
-        setConnectionError(data.error || 'Connection error');
+        setConnectionError(data.error || "Connection error");
       } else {
         setConnected(false);
       }
     };
 
     try {
-      wsClient.on('threat_alert', handleThreatAlert);
-      wsClient.on('connection_status', handleConnectionStatus);
+      wsClient.on("threat_alert", handleThreatAlert);
+      wsClient.on("connection_status", handleConnectionStatus);
       wsClient.connect();
     } catch (error) {
-      console.error('WebSocket initialization failed:', error);
-      setConnectionError('Failed to initialize WebSocket connection');
+      console.error("WebSocket initialization failed:", error);
+      setConnectionError("Failed to initialize WebSocket connection");
       setConnected(false);
     }
 
     return () => {
-      wsClient.off('threat_alert', handleThreatAlert);
-      wsClient.off('connection_status', handleConnectionStatus);
+      wsClient.off("threat_alert", handleThreatAlert);
+      wsClient.off("connection_status", handleConnectionStatus);
       wsClient.disconnect();
     };
   }, [addThreatEvent, setConnected]);
@@ -105,13 +110,13 @@ export default function LiveThreatFeed() {
   const filteredThreats = getFilteredThreats();
 
   const severityColors: Record<string, string> = {
-    INFO: 'text-sky-400 bg-sky-500/10',
-    TARPIT: 'text-amber-400 bg-amber-500/10',
-    CRITICAL: 'text-orange-500 bg-orange-500/10',
-    BLOCKED: 'text-red-500 bg-red-600/20',
+    INFO: "text-sky-400 bg-sky-500/10",
+    TARPIT: "text-amber-400 bg-amber-500/10",
+    CRITICAL: "text-orange-500 bg-orange-500/10",
+    BLOCKED: "text-red-500 bg-red-600/20",
   };
 
-  const filterButtons = ['ALL', 'CRITICAL', 'TARPIT', 'INFO'];
+  const filterButtons = ["ALL", "CRITICAL", "TARPIT", "INFO"];
 
   return (
     <div className="space-y-4">
@@ -119,12 +124,12 @@ export default function LiveThreatFeed() {
         <div className="flex items-center gap-2">
           <div
             className={`h-2 w-2 rounded-full ${
-              isConnected ? 'bg-sky-500' : 'bg-red-500'
+              isConnected ? "bg-sky-500" : "bg-red-500"
             }`}
           />
 
           <span className="text-sm text-slate-400">
-            {isConnected ? 'Connected to Live Backend' : 'Disconnected'}
+            {isConnected ? "Connected to Live Backend" : "Disconnected"}
           </span>
 
           {connectionError && (
@@ -142,8 +147,8 @@ export default function LiveThreatFeed() {
             onClick={() => setActiveFilter(filter)}
             className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
               activeFilter === filter
-                ? 'bg-sky-600 text-white'
-                : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                ? "bg-sky-600 text-white"
+                : "bg-slate-800 text-slate-400 hover:bg-slate-700"
             }`}
           >
             {filter}
@@ -182,7 +187,7 @@ export default function LiveThreatFeed() {
                       <span
                         className={`rounded px-2 py-1 text-sm font-bold ${
                           severityColors[threat.severity] ??
-                          'bg-slate-700 text-slate-300'
+                          "bg-slate-700 text-slate-300"
                         }`}
                       >
                         {threat.severity}
@@ -214,10 +219,8 @@ export default function LiveThreatFeed() {
                     </p>
 
                     <p className="mt-1 text-sm font-bold text-slate-300">
-                      Score:{' '}
-                      <span className="text-white">
-                        {threat.scoreDelta}
-                      </span>
+                      Score:{" "}
+                      <span className="text-white">{threat.scoreDelta}</span>
                     </p>
                   </div>
                 </div>
