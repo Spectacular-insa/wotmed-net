@@ -2,342 +2,162 @@
 
 ## Overview
 
-Testing verifies that the Student Management System continues to operate normally while the Wotmed-Net deception mechanisms detect controlled interactions with deception resources.
+Testing is used to assess whether the existing Student Management System continues to provide its normal application functionality while the configured deception mechanisms detect controlled suspicious interactions.
 
-Testing is performed only within the authorized Wotmed-Net development and testing environment.
+Testing is performed within the authorized Wotmed-Net development and testing environment.
 
-All verification described in this document was performed against the local Student Management backend.
+The testing activities cover deception endpoint behavior, security-event generation, telemetry visibility, and corresponding alerts in the SOC Dashboard. The results documented here are based on local testing and the evidence collected for the Demo App & Deception Tester role.
 
-## Testing Scope
+## Functional Testing
 
-Testing covers:
+The reference application provides normal application functionality that should remain available during deception testing.
 
-* Normal application traffic
-* Wotmed-Net security-layer integration
-* Canary deception
-* Canary File deception
-* Decoy administrative resource
-* Honeytoken
-* Security-event generation
-* Local Wotmed-Net telemetry observation
+Relevant functionality includes:
 
-Final cloud telemetry storage and SOC Dashboard integration remain pending project integration.
+- User authentication.
+- Student management.
+- Course management.
+- Department management.
+- Dashboard functionality.
+- Database operations.
 
-## Test Environment
+Normal application behavior should be checked independently of the deception tests. For example, the locally observed `GET /api/departments` response returned HTTP 200.
 
-The reference application is the existing Student Management System.
+This result verifies that particular endpoint request at the time of testing; it does not independently verify every application feature or all database operations.
 
-The backend is run locally on:
+## Deception Testing
 
-```text
-http://localhost:5000
-```
+The configured deception mechanisms are tested individually to observe their endpoint behavior and resulting security events.
 
-Testing uses controlled requests against the local application.
+The tested mechanisms include:
 
-No production systems, real credentials, production secrets, or production data are used for deception testing.
+- Honeytoken resource.
+- Canary endpoint.
+- Canary file resource.
+- Decoy administrative resource.
 
-## Normal Application Testing
-
-A normal application endpoint was tested to confirm that regular application traffic continues to operate.
-
-### Test
-
-```text
-GET /api/departments
-```
-
-### Expected Result
-
-The normal application endpoint should process the request without triggering a deception security event.
-
-### Actual Result
-
-The endpoint returned:
-
-```text
-HTTP 200 OK
-```
-
-Wotmed-Net telemetry observation was also visible in the backend runtime.
-
-No deception security event was generated.
-
-### Status
-
-**IMPLEMENTED - VERIFIED**
-
-## Canary Testing
-
-The Canary deception resource was tested using a controlled local request.
-
-### Test
-
-```text
-GET /api/deception/canary
-```
-
-### Expected Result
-
-The request should trigger the Canary deception mechanism, generate a security event, and return an access-denied response.
-
-### Actual Result
-
-The application generated:
-
-```text
-canary_triggered
-```
-
-The endpoint returned:
-
-```text
-HTTP 403 Forbidden
-```
-
-The backend runtime displayed the corresponding Wotmed-Net security event.
-
-### Status
-
-**IMPLEMENTED - VERIFIED**
-
-## Canary File Testing
-
-The Canary File deception resource was tested using a controlled local request.
-
-### Test
-
-```text
-GET /api/deception/canary-file
-```
-
-### Expected Result
-
-The request should trigger the Canary File mechanism, generate a security event, and return an access-denied response.
-
-### Actual Result
-
-The application generated:
-
-```text
-canary_file_triggered
-```
-
-The endpoint returned:
-
-```text
-HTTP 403 Forbidden
-```
-
-The backend runtime displayed the corresponding Wotmed-Net security event.
-
-### Status
-
-**IMPLEMENTED - VERIFIED**
-
-## Decoy Administrative Resource Testing
-
-The decoy administrative resource was tested using a controlled local request.
-
-### Test
-
-```text
-GET /api/deception/decoy-admin
-```
-
-### Expected Result
-
-The request should trigger the decoy administrative resource, generate a security event, and return an access-denied response.
-
-### Actual Result
-
-The application generated:
-
-```text
-decoy_admin_triggered
-```
-
-The endpoint returned:
-
-```text
-HTTP 403 Forbidden
-```
-
-The backend runtime displayed the corresponding Wotmed-Net security event.
-
-### Status
-
-**IMPLEMENTED - VERIFIED**
+Testing focuses on whether the configured interaction is detected, whether a security event is generated, and whether the resulting event can be observed in the available monitoring interfaces.
 
 ## Honeytoken Testing
 
-The controlled honeytoken was tested using the configured test value.
+A controlled request is used to test the configured honeytoken mechanism.
 
-### Test
+The observed workflow is:
 
-```text
-GET /api/deception/honeytoken?token=WOTMED-DECOY-ADMIN-TOKEN-001
-```
+Honeytoken Interaction  
+↓  
+Trigger Detected  
+↓  
+Security Event Generated  
+↓  
+Telemetry Event Observed  
+↓  
+Corresponding SOC Dashboard Alert
 
-### Expected Result
+The locally observed event type is `honeytoken_triggered`.
 
-The configured honeytoken interaction should be detected, generate a security event, and return an access-denied response.
+The collected evidence includes the endpoint response, telemetry view, SOC Dashboard alert, and live-event view.
 
-### Actual Result
+## Canary Testing
 
-The application generated:
+Controlled requests are used to test the configured canary endpoint and canary file resource.
 
-```text
-honeytoken_triggered
-```
+The observed workflow is:
 
-The endpoint returned:
+Canary Request  
+↓  
+Configured Resource Accessed  
+↓  
+Trigger Detected  
+↓  
+Security Event Generated  
+↓  
+Telemetry and Dashboard Visibility
 
-```text
-HTTP 403 Forbidden
-```
+The locally observed event types are:
 
-The backend runtime displayed the corresponding Wotmed-Net security event.
+- `canary_triggered`
+- `canary_file_triggered`
 
-### Status
+The captured tests showed HTTP 403 responses for the tested requests. These results apply to the specific tested requests and do not prove that every possible access path is blocked.
 
-**IMPLEMENTED - VERIFIED**
+The decoy administrative resource is tested separately, with the observed event type `decoy_admin_triggered`.
 
-## Test Results Summary
+## Telemetry Verification
 
-| Test        | Request                      | Expected Result                | Actual Result                        | Status                 |
-| ----------- | ---------------------------- | ------------------------------ | ------------------------------------ | ---------------------- |
-| Normal API  | `/api/departments`           | Normal request processed       | HTTP `200`                           | IMPLEMENTED - VERIFIED |
-| Canary      | `/api/deception/canary`      | Security event + access denied | `canary_triggered` + HTTP `403`      | IMPLEMENTED - VERIFIED |
-| Canary File | `/api/deception/canary-file` | Security event + access denied | `canary_file_triggered` + HTTP `403` | IMPLEMENTED - VERIFIED |
-| Decoy Admin | `/api/deception/decoy-admin` | Security event + access denied | `decoy_admin_triggered` + HTTP `403` | IMPLEMENTED - VERIFIED |
-| Honeytoken  | `/api/deception/honeytoken`  | Security event + access denied | `honeytoken_triggered` + HTTP `403`  | IMPLEMENTED - VERIFIED |
+Telemetry verification checks whether the security events generated by the tested deception mechanisms are visible in the available Wotmed-Net telemetry interface.
 
-## Security Event Verification
+The local tests produced evidence of the four event types:
 
-Each verified deception test generated a corresponding security event.
+- `honeytoken_triggered`
+- `canary_triggered`
+- `canary_file_triggered`
+- `decoy_admin_triggered`
 
-The observed event types are:
+The collected screenshots document the observed telemetry events and their corresponding SOC Dashboard alerts.
 
-```text
-canary_triggered
-canary_file_triggered
-decoy_admin_triggered
-honeytoken_triggered
-```
-
-The events include request information such as:
-
-* Event type
-* Deception resource
-* HTTP method
-* Request IP address
-* User-agent
-* Event timestamp
-
-The events were verified through backend runtime output during controlled localhost testing.
-
-## Wotmed-Net Telemetry Verification
-
-During testing, Wotmed-Net telemetry observations were visible in the backend runtime.
-
-This confirms that the application is connected to the local Wotmed-Net telemetry observation path.
-
-**Local telemetry observation:** IMPLEMENTED - VERIFIED
-
-The current development environment does not have the required Supabase credentials configured. Therefore, cloud telemetry storage has not yet been verified.
-
-**Cloud telemetry storage:** PENDING PROJECT INTEGRATION
-
-**End-to-end telemetry delivery:** PENDING PROJECT INTEGRATION
-
-**SOC Dashboard reception and display:** PENDING PROJECT INTEGRATION
-
-## Evidence
-
-Testing evidence consists of:
-
-* Backend terminal output showing Wotmed-Net telemetry observations.
-* Backend terminal output showing the generated deception security events.
-* Controlled PowerShell request results showing the HTTP responses.
-* Screenshots captured during verification of the deception mechanisms.
-* Application integration evidence showing the Wotmed-Net security layers registered in the backend request flow.
+Visibility in the telemetry interface does not, by itself, establish persistent database storage, guaranteed event delivery, complete schema compatibility, or reliable recovery after a service restart. Those behaviors require separate verification.
 
 ## Integration Testing
 
-The verified local integration flow is:
+Integration testing examines the observed interaction between the Demo Application's deception mechanisms and the available Wotmed-Net monitoring components.
 
-```text
-Client Request
-      |
-Student Management Backend
-      |
-Wotmed-Net Defense Layer
-      |
-Wotmed-Net Security Middleware
-      |
-Application Route / Deception Route
-      |
-Deception Trigger
-      |
-Security Event
-      |
-Wotmed-Net Telemetry Observation
-```
+The workflow under test is:
 
-The local portion of this workflow has been verified.
+Demo Application  
+↓  
+Deception Trigger  
+↓  
+Security Event  
+↓  
+Telemetry Interface  
+↓  
+SOC Dashboard Alert
 
-The remaining end-to-end project integration is:
+Local testing provides evidence that events from the tested deception mechanisms were visible in telemetry and that corresponding alerts appeared in the SOC Dashboard.
 
-```text
-Security Event
-      |
-Final Telemetry Integration
-      |
-Telemetry Storage
-      |
-SOC Dashboard
-```
+The complete production integration, persistent storage, event-delivery reliability, and correctness of the full threat-scoring pipeline have not been established by these screenshots alone.
 
-This final portion will be verified after the Backend/Telemetry and SOC Dashboard components provide the required integration.
+## Test Results
 
-## Reproducibility
+The following table summarizes the observed results. A status of *Observed in local testing* is intentionally narrower than a claim of complete end-to-end verification.
 
-The deception tests can be reproduced against the local development backend using controlled requests.
+| Test | Expected behavior | Observed result | Status |
+|---|---|---|---|
+| Department endpoint | Normal endpoint responds successfully | HTTP 200 observed for `GET /api/departments` | Implemented — verified for this request |
+| Honeytoken | Trigger generates a security event | `honeytoken_triggered` observed | Implemented — locally tested |
+| Canary endpoint | Trigger generates a security event | `canary_triggered` observed | Implemented — locally tested |
+| Canary file | Trigger generates a security event | `canary_file_triggered` observed | Implemented — locally tested |
+| Decoy administrative resource | Trigger generates a security event | `decoy_admin_triggered` observed | Implemented — locally tested |
+| Telemetry visibility | Generated events appear in telemetry | Events observed in the local telemetry interface | Observed in local testing |
+| SOC Dashboard visibility | Related alerts appear in the dashboard | Corresponding alerts observed during testing | Observed in local testing |
+| Persistent storage and recovery | Events remain available after restart or recovery | Not established by the current evidence | Not verified |
+| Complete production integration | All relevant components operate reliably together | Not established by the current evidence | Not verified |
 
-Example:
+## Evidence
 
-```powershell
-Invoke-WebRequest http://localhost:5000/api/deception/canary
-```
+The 16 evidence screenshots are maintained in `demo-app/evidence/` and indexed in `demo-app/evidence/README.md`.
 
-For the honeytoken:
+The screenshots cover four evidence views for each of the four deception mechanisms:
 
-```powershell
-Invoke-WebRequest "http://localhost:5000/api/deception/honeytoken?token=WOTMED-DECOY-ADMIN-TOKEN-001"
-```
+1. Endpoint response.
+2. Telemetry event.
+3. SOC Dashboard alert.
+4. Live-event view.
 
-The backend terminal should be monitored while the request is made so that the generated security event and Wotmed-Net telemetry observation can be verified.
+The evidence should be interpreted according to what is visible in each screenshot and should not be used to claim untested behavior.
 
-## Current Testing Status
+## Testing Limitations
 
-### IMPLEMENTED - VERIFIED
+The current evidence documents specific local test observations. Further testing is needed to establish:
 
-* Normal application traffic verification
-* Wotmed-Net defense/security integration verification
-* Canary testing
-* Canary File testing
-* Decoy administrative resource testing
-* Honeytoken testing
-* Security-event generation
-* Local Wotmed-Net telemetry observation
-* Controlled localhost testing
-* Evidence collection
+- Complete regression coverage for all normal application features.
+- Database operation correctness across the full application.
+- Persistent storage and recovery of security events.
+- Reliable telemetry delivery and failure handling.
+- Correct and consistent threat-score mapping.
+- Complete production readiness and end-to-end reliability.
 
-### PENDING PROJECT INTEGRATION
+## Scope of Contribution
 
-* Final telemetry event-schema mapping
-* Cloud telemetry storage verification
-* End-to-end telemetry delivery
-* SOC Dashboard reception and display
-* Final end-to-end integration evidence
+My contribution focuses on the Demo App & Deception Tester role: testing the configured deception resources, observing endpoint responses, checking security-event generation, and verifying event visibility in the available Wotmed-Net telemetry and SOC Dashboard interfaces.
