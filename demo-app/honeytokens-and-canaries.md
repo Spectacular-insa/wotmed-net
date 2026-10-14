@@ -2,216 +2,135 @@
 
 ## Overview
 
-The Wotmed-Net Demo Application uses controlled honeytoken and canary resources to identify and record suspicious interactions within the authorized Wotmed-Net testing environment.
+Honeytokens and canary resources are used by the Demo Application to identify suspicious interactions within the controlled Wotmed-Net testing environment.
 
-The implemented resources do not use real credentials, production secrets, or production data.
+The resources are integrated into the existing Student Management reference application for local security testing. They are designed to use controlled, non-production values and must not expose real credentials, production secrets, or sensitive data.
 
-The current implementation includes:
-
-- Canary resource
-- Canary File resource
-- Honeytoken resource
-
-A decoy administrative resource is also implemented and documented separately as part of the deception layer.
+Local testing has covered the honeytoken, canary endpoint, canary file resource, and decoy administrative resource. The collected evidence is maintained in `demo-app/evidence/README.md`.
 
 ## Honeytokens
 
-A honeytoken is a fake value or resource created specifically for detection and security testing.
+A honeytoken is a decoy value or resource designed to detect unexpected access or use.
 
-The current implementation uses the following controlled honeytoken:
+The implemented honeytoken mechanism uses a designated decoy administrative token identifier:
 
-```text
-WOTMED-DECOY-ADMIN-TOKEN-001
-```
+`WOTMED-DECOY-ADMIN-TOKEN`
 
-This value is not a real administrative credential.
+This identifier is a decoy resource label, not a real credential.
 
-## Honeytoken Endpoint
+Other possible honeytoken examples include:
 
-The honeytoken is exposed through the following controlled endpoint:
+- Fake administrative credentials.
+- Decoy configuration values.
+- Fake API keys.
+- Synthetic sensitive-looking files.
 
-```text
-GET /api/deception/honeytoken
-```
-
-The token is supplied as a query parameter during testing.
-
-Example:
-
-```text
-GET /api/deception/honeytoken?token=WOTMED-DECOY-ADMIN-TOKEN-001
-```
+These additional examples remain proposed unless they are implemented and independently tested.
 
 ## Honeytoken Trigger
 
-When the configured honeytoken value is supplied, the application detects the interaction and generates:
+A honeytoken trigger occurs when an interaction with the designated honeytoken resource is detected.
 
-```text
-honeytoken_triggered
-```
+The tested workflow is:
 
-The security event records information including:
+Honeytoken Resource  
+↓  
+Interaction Detected  
+↓  
+Security Event Generated  
+↓  
+Telemetry Event Observed  
+↓  
+Related SOC Dashboard Alert
 
-- HTTP method
-- Request IP address
-- User-agent
-- Honeytoken resource
-- Event timestamp
+The locally observed event type is:
 
-The endpoint returns:
+`honeytoken_triggered`
 
-```text
-HTTP 403 Forbidden
-```
-
-A request without the configured honeytoken does not trigger the honeytoken security event and returns a resource-not-found response.
-
-### Status
-
-**IMPLEMENTED - VERIFIED**
+The collected screenshots document the endpoint response and the corresponding telemetry, SOC Dashboard, and live-event views.
 
 ## Canary Resources
 
-A canary resource is a controlled resource designed to generate an event when accessed.
+Canary resources are controlled resources used to detect unexpected access attempts.
 
-The current implementation includes:
+The implemented and tested resources include:
 
-1. Canary endpoint
-2. Canary File endpoint
+- **Canary endpoint:** A designated endpoint used to detect access attempts.
+- **Canary file resource:** A designated resource used to detect requests for a canary file.
+- **Decoy administrative resource:** A decoy endpoint used to detect suspicious administrative-resource access.
 
-## Canary Endpoint
+These resources are intended for controlled testing and should not contain genuine sensitive information.
 
-The Canary resource is available at:
+## Canary Triggers
 
-```text
-GET /api/deception/canary
-```
+A canary trigger occurs when a request reaches a configured canary or decoy resource.
 
-When accessed, it generates:
+The general workflow is:
 
-```text
-canary_triggered
-```
+Request Received  
+↓  
+Configured Resource Accessed  
+↓  
+Trigger Detected  
+↓  
+Security Event Generated  
+↓  
+Telemetry and Dashboard Visibility
 
-The event contains request information such as:
+The locally observed event types are:
 
-- HTTP method
-- Request IP address
-- User-agent
-- Canary resource
-- Event timestamp
+| Resource | Observed event type |
+|---|---|
+| Canary endpoint | `canary_triggered` |
+| Canary file resource | `canary_file_triggered` |
+| Decoy administrative resource | `decoy_admin_triggered` |
 
-The endpoint returns:
+The tested endpoint requests returned HTTP 403 responses in the captured evidence. These responses document the observed behavior of the tested requests; they should not be interpreted as proof that every possible access path is blocked.
 
-```text
-HTTP 403 Forbidden
-```
+## Security Events
 
-### Status
+When a configured honeytoken or canary resource is triggered, the application can generate a security event for monitoring and analysis.
 
-**IMPLEMENTED - VERIFIED**
+Relevant event information depends on the implemented event schema and may include:
 
-## Canary File
+- Event type.
+- Triggered resource or resource identifier.
+- Timestamp.
+- Available request context.
+- Detection status.
+- Other fields defined by the agreed telemetry contract.
 
-The Canary File resource is available at:
+Only fields confirmed by the implementation should be documented as guaranteed event properties. Source information, severity, and threat-score values must not be assumed to be complete or accurate without verification.
 
-```text
-GET /api/deception/canary-file
-```
+The tested event types were observed in the local telemetry interface, with corresponding alerts visible in the SOC Dashboard during testing.
 
-When accessed, it generates:
+## Implementation Status
 
-```text
-canary_file_triggered
-```
+| Mechanism or capability | Status |
+|---|---|
+| Honeytoken resource | Implemented — locally tested |
+| Honeytoken trigger event | Observed during local testing |
+| Canary endpoint | Implemented — locally tested |
+| Canary file resource | Implemented — locally tested |
+| Decoy administrative resource | Implemented — locally tested |
+| Related telemetry events | Observed during local testing |
+| Corresponding SOC Dashboard alerts | Observed during local testing |
+| Additional proposed honeytoken types | Planned / not verified |
+| Complete production integration and persistent storage | Not verified |
 
-The endpoint returns:
+## Verification and Evidence
 
-```text
-HTTP 403 Forbidden
-```
+The evidence screenshots are stored in `demo-app/evidence/` and indexed in `demo-app/evidence/README.md`.
 
-The event records request information and the triggered deception resource.
+They document four stages for each tested mechanism:
 
-### Status
+1. Endpoint response.
+2. Telemetry event visibility.
+3. SOC Dashboard alert visibility.
+4. Live-event visibility.
 
-**IMPLEMENTED - VERIFIED**
+These captures support the specific local observations shown. They do not independently prove production readiness, persistent database storage, complete threat-score mapping, or reliable delivery under all conditions.
 
-## Deception Workflow
+## Scope
 
-The verified honeytoken and canary workflow is:
-
-```text
-Client Request
-      |
-Deception Resource
-      |
-Trigger Detected
-      |
-Security Event
-      |
-Wotmed-Net Telemetry Observation
-```
-
-The resource interaction is intentionally controlled so that the application can detect and record the event.
-
-## Security Event
-
-Security events generated by the implemented honeytoken and canary resources contain information such as:
-
-```text
-Event Type
-Deception Resource
-HTTP Method
-Request IP
-User-Agent
-Timestamp
-```
-
-The events are observable in the backend runtime during controlled localhost testing.
-
-The current event types are:
-
-| Resource    | Security Event          | Response   |
-| ----------- | ----------------------- | ---------- |
-| Canary      | `canary_triggered`      | HTTP `403` |
-| Canary File | `canary_file_triggered` | HTTP `403` |
-| Honeytoken  | `honeytoken_triggered`  | HTTP `403` |
-
-## Wotmed-Net Telemetry
-
-During local testing, the deception requests were observed by the Wotmed-Net telemetry layer.
-
-The current development environment does not have the required Supabase credentials configured. Therefore, local telemetry observation has been verified, but final cloud telemetry storage has not yet been verified.
-
-**Local telemetry observation:** IMPLEMENTED - VERIFIED
-
-The following remain pending project integration:
-
-- Final telemetry event-schema mapping
-- Cloud telemetry storage verification
-- End-to-end telemetry delivery
-- SOC Dashboard reception and display
-- Final end-to-end integration evidence
-
-## Verification
-
-Controlled localhost testing verified:
-
-- The Canary resource generates `canary_triggered` and returns HTTP `403`.
-- The Canary File resource generates `canary_file_triggered` and returns HTTP `403`.
-- The valid honeytoken generates `honeytoken_triggered` and returns HTTP `403`.
-
-Backend runtime output and controlled request results were used as verification evidence.
-
-## Security and Testing Scope
-
-The honeytoken and canary resources are intended for the authorized Wotmed-Net development and testing environment.
-
-Testing is performed against the local development application using controlled requests.
-
-The honeytoken is a fake test value and must not be treated as a real credential.
-
-No real credentials, production secrets, or production data are used as deception resources.
-
-The deception resources should not be deployed or tested against unauthorized systems.
+This work focuses on the Demo App & Deception Tester role: testing controlled honeytokens and canary resources, checking their observed responses, and verifying the visibility of generated events in the available Wotmed-Net monitoring interfaces.

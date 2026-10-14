@@ -2,238 +2,129 @@
 
 ## Overview
 
-The Wotmed-Net Demo Application uses controlled deception mechanisms to identify and record interactions with resources that are not part of normal application functionality.
+The Demo Application uses controlled deception mechanisms to help identify suspicious interactions within the Wotmed-Net testing environment.
 
-The deception mechanisms are integrated into the existing **Student Management System** and are intended for authorized local security testing.
+The mechanisms are being integrated into the existing Student Management System to detect interactions with designated decoy resources while preserving normal application functionality.
 
-Normal application functionality remains available while the deception resources provide controlled security-event generation.
+The implementation is tested locally. The evidence collected covers endpoint responses, security-event generation, telemetry visibility, and corresponding SOC Dashboard alerts.
 
-## Implemented Deception Mechanisms
+## Decoy Resources
 
-The reference application currently contains four implemented and verified deception mechanisms:
+Decoy resources are application resources designed specifically for security testing and detection. They appear as resources that should not normally be accessed during legitimate application use.
 
-1. Canary
-2. Canary File
-3. Decoy Administrative Resource
-4. Honeytoken
+The implemented and tested deception resources include:
 
-Each mechanism is exposed through the `/api/deception` route group.
+- **Honeytoken:** A designated decoy token used to detect suspicious interaction.
+- **Canary endpoint:** A controlled endpoint used to detect access attempts.
+- **Canary file resource:** A controlled resource used to detect requests for a designated canary file.
+- **Decoy administrative resource:** A decoy endpoint used to detect suspicious access attempts.
 
-## Canary
+Additional decoy resources, such as fake configuration values and other hidden application resources, may be considered for future testing.
 
-### Endpoint
+Decoy resources must not contain real credentials, genuine secrets, or production data.
 
-```text
-GET /api/deception/canary
-```
+## Deception Triggers
 
-### Behavior
+A deception trigger occurs when a request interacts with a configured deception resource.
 
-A request to the Canary resource triggers a security event:
+Examples include:
 
-```text
-canary_triggered
-```
+- Accessing the designated honeytoken resource.
+- Requesting the canary endpoint.
+- Requesting the canary file resource.
+- Accessing the decoy administrative endpoint.
 
-The event records information including:
+When a configured trigger is detected, the application can generate a security event associated with the interaction.
 
-* HTTP method
-* Request IP address
-* User-agent
-* Deception resource
-* Event timestamp
+The locally tested event types include:
 
-The endpoint returns:
+| Deception mechanism | Observed event type |
+|---|---|
+| Honeytoken | `honeytoken_triggered` |
+| Canary endpoint | `canary_triggered` |
+| Canary file | `canary_file_triggered` |
+| Decoy administrative resource | `decoy_admin_triggered` |
 
-```text
-HTTP 403 Forbidden
-```
-
-### Status
-
-**IMPLEMENTED - VERIFIED**
-
-## Canary File
-
-### Endpoint
-
-```text
-GET /api/deception/canary-file
-```
-
-### Behavior
-
-A request to the Canary File resource triggers:
-
-```text
-canary_file_triggered
-```
-
-The endpoint returns:
-
-```text
-HTTP 403 Forbidden
-```
-
-The event records request information and the triggered deception resource.
-
-### Status
-
-**IMPLEMENTED - VERIFIED**
-
-## Decoy Administrative Resource
-
-### Endpoint
-
-```text
-GET /api/deception/decoy-admin
-```
-
-### Behavior
-
-A request to the decoy administrative resource triggers:
-
-```text
-decoy_admin_triggered
-```
-
-The endpoint returns:
-
-```text
-HTTP 403 Forbidden
-```
-
-The resource is separated from the application's normal administrative functionality and is intended only for controlled security testing.
-
-### Status
-
-**IMPLEMENTED - VERIFIED**
-
-## Honeytoken
-
-### Endpoint
-
-```text
-GET /api/deception/honeytoken
-```
-
-The controlled honeytoken value is:
-
-```text
-WOTMED-DECOY-ADMIN-TOKEN-001
-```
-
-### Behavior
-
-A request containing the controlled honeytoken triggers:
-
-```text
-honeytoken_triggered
-```
-
-The event records information including:
-
-* HTTP method
-* Request IP address
-* User-agent
-* Honeytoken resource
-* Event timestamp
-
-A valid honeytoken interaction returns:
-
-```text
-HTTP 403 Forbidden
-```
-
-### Status
-
-**IMPLEMENTED - VERIFIED**
-
-## Deception Summary
-
-| Mechanism                     | Endpoint                     | Security Event          | Response   | Status                 |
-| ----------------------------- | ---------------------------- | ----------------------- | ---------- | ---------------------- |
-| Canary                        | `/api/deception/canary`      | `canary_triggered`      | HTTP `403` | IMPLEMENTED - VERIFIED |
-| Canary File                   | `/api/deception/canary-file` | `canary_file_triggered` | HTTP `403` | IMPLEMENTED - VERIFIED |
-| Decoy Administrative Resource | `/api/deception/decoy-admin` | `decoy_admin_triggered` | HTTP `403` | IMPLEMENTED - VERIFIED |
-| Honeytoken                    | `/api/deception/honeytoken`  | `honeytoken_triggered`  | HTTP `403` | IMPLEMENTED - VERIFIED |
+These event names describe the tested implementation and should remain consistent with the event names used by the relevant application and telemetry components.
 
 ## Deception Workflow
 
-The verified application workflow is:
+The intended workflow is:
 
-```text
-Client Request
-      |
-Student Management Backend
-      |
-Wotmed-Net Defense Layer
-      |
-Wotmed-Net Security Middleware
-      |
-Deception Route
-      |
-Deception Trigger
-      |
-Security Event
-      |
-Wotmed-Net Telemetry Observation
-```
+Suspicious Interaction  
+↓  
+Deception Resource Accessed  
+↓  
+Trigger Detected  
+↓  
+Security Event Generated  
+↓  
+Telemetry Event Observed  
+↓  
+Corresponding SOC Dashboard Alert
 
-When a deception resource is accessed, the corresponding deception service generates a security event.
+Local testing has produced evidence of endpoint responses, associated events in the available telemetry interface, and corresponding alerts displayed in the SOC Dashboard.
 
-## Security Event Generation
+This verifies the observed parts of the workflow in the local testing environment. It does not, by itself, establish that every stage is fully integrated or that events are persisted reliably in a production environment.
 
-Security events are generated through the application's security-event service.
+## Security Event Information
 
-The current event structure includes information such as:
+When a deception trigger is detected, the application generates a security event for monitoring and analysis.
 
-```text
-Event Type
-Deception Resource
-HTTP Method
-Request IP
-User-Agent
-Timestamp
-```
+The event should identify the relevant trigger and include the fields required by the agreed Wotmed-Net telemetry format.
 
-The events are observable in the backend runtime during controlled testing.
+The event schema, field mapping, delivery behavior, and persistence requirements must be verified against the telemetry component's implementation and agreed interface contract. No unverified schema or delivery guarantee should be assumed.
 
-## Wotmed-Net Telemetry
+## Wotmed-Net Integration
 
-During local testing, the deception requests were observed by the Wotmed-Net telemetry layer.
+The Demo Application's deception mechanisms are intended to provide security events to the Wotmed-Net telemetry system so that they can be observed by the relevant monitoring components.
 
-The local development environment currently operates without the required Supabase credentials, so telemetry is observed locally rather than verified as stored in the cloud telemetry database.
+Local evidence includes the visibility of the tested deception events in the telemetry interface and related alerts in the SOC Dashboard.
 
-**Local telemetry observation:** IMPLEMENTED - VERIFIED
+The following areas require separate verification before the complete integration can be described as fully operational:
 
-The following remain pending project integration:
+- Agreement between the application's security-event fields and the telemetry schema.
+- Reliable event transmission and handling of delivery failures.
+- Event persistence and retrieval, where required by the system design.
+- Consistent event identification and severity mapping across components.
+- Verification of threat-score calculations and their interpretation.
 
-* Final telemetry event-schema mapping
-* Cloud telemetry storage verification
-* End-to-end telemetry delivery
-* SOC Dashboard reception and display
-* Final end-to-end integration evidence
+The presence of an event in a local interface should not be treated as proof of database persistence, production deployment, or complete end-to-end reliability.
 
-## Verification
+## Implementation and Verification Status
 
-All four deception mechanisms were tested against the local Student Management backend.
+| Component | Status |
+|---|---|
+| Honeytoken deception mechanism | Implemented — locally tested |
+| Canary endpoint | Implemented — locally tested |
+| Canary file resource | Implemented — locally tested |
+| Decoy administrative resource | Implemented — locally tested |
+| Related security-event generation | Observed during local testing |
+| Telemetry event visibility | Observed during local testing |
+| Corresponding SOC Dashboard alerts | Observed during local testing |
+| Complete production telemetry integration | Not verified |
+| Persistent storage and reliable event recovery | Not verified |
+| Complete threat-score mapping | Not verified |
+| Additional proposed decoy resources | Planned / not verified |
 
-The observed results were:
+The detailed endpoint, telemetry, dashboard, and live-event screenshots are maintained in `demo-app/evidence/README.md`.
 
-* Canary generated `canary_triggered` and returned HTTP `403`.
-* Canary File generated `canary_file_triggered` and returned HTTP `403`.
-* Decoy Administrative Resource generated `decoy_admin_triggered` and returned HTTP `403`.
-* Honeytoken generated `honeytoken_triggered` and returned HTTP `403`.
+## Implementation Approach
 
-The verification evidence consists of backend runtime output and controlled request results.
+The deception mechanisms were introduced into the existing Student Management System and tested individually in the local environment.
 
-## Security and Testing Scope
+Testing focused on confirming that:
 
-The deception mechanisms are intended for the authorized Wotmed-Net development and testing environment.
+1. Requests to configured deception resources produced the expected observed HTTP responses.
+2. The corresponding security events were generated and visible in the available telemetry interface.
+3. Related alerts appeared in the SOC Dashboard during testing.
+4. Normal application functionality could still be checked separately from the deception tests.
 
-Testing is performed against the local development application using controlled requests.
+The collected evidence documents the behavior observed during these tests. Further verification is required for production deployment, persistent storage, complete telemetry reliability, and any integration behavior not directly covered by the available evidence.
 
-No real credentials, production secrets, or production data are used as deception resources.
+## Scope of Contribution
 
-The deception resources should not be deployed or tested against unauthorized systems.
+My contribution focuses on **Demo App & Deception Testing**: working with the existing reference application, testing 
+configured deception resources, checking endpoint behavior, and verifying the visibility of the resulting security events in the available monitoring interfaces.
+
+Backend telemetry infrastructure, SOC Dashboard implementation, and complete production integration are separate concerns and should only be reported as completed when supported by their own implementation and verification evidence.
