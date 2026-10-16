@@ -2,140 +2,102 @@
 
 ## Overview
 
-The Wotmed-Net Demo Application uses the existing **Student Management System** as the controlled reference application for demonstrating and testing Wotmed-Net application-layer security and deception capabilities.
+The Demo Application uses the existing Student Management System as the reference application for the Wotmed-Net project.
 
-The existing application is adapted rather than replaced. Its normal functionality remains available while Wotmed-Net security and deception mechanisms are integrated for controlled testing.
+The existing application is adapted to provide a realistic environment for testing controlled deception mechanisms. The goal is to extend the application for security demonstrations rather than replace it with a new application.
 
-## Application Components
+## Application Features
 
-The reference application consists of:
+The reference application includes functionality for:
 
-- Frontend
-- Backend / API
-- MySQL Database
+- User authentication.
+- Student management.
+- Course management.
+- Department management.
+- Dashboard functionality.
+- Database operations.
 
-### Frontend
+These features provide the application context in which normal requests can be distinguished from interactions with designated deception resources.
 
-The frontend provides the user interface for interacting with the Student Management System.
+## Application Structure
 
-### Backend / API
+The reference application consists of three main components:
 
-The backend provides the application API, handles application requests and business logic, and communicates with the MySQL database.
+- **Frontend:** The user interface through which users interact with the application.
+- **Backend / API:** Handles HTTP requests, application logic, security checks, and database communication.
+- **MySQL Database:** Stores application data used by the backend.
 
-The backend is also the integration point for the Wotmed-Net security and deception layers.
+The Wotmed-Net deception mechanisms are added to the existing application and backend request flow.
 
-### Database
+## Frontend
 
-MySQL is used by the Student Management System to store application data and support backend database operations.
+The frontend provides the user interface for the Student Management System. It allows users to access the application's available features and interact with its backend APIs.
 
-## Wotmed-Net Integration
+The existing frontend serves as the reference interface for testing that security-related additions do not unnecessarily disrupt normal application use.
 
-The Student Management backend integrates Wotmed-Net security components into the API request flow.
+## Backend
 
-The current backend request flow is:
+The backend exposes the application's API endpoints and processes incoming requests.
 
-```text
-Client Request
-      |
-Student Management Backend
-      |
-Wotmed-Net Defense Layer
-      |
-Wotmed-Net Security Middleware
-      |
-Application Route / Deception Route
-      |
-Security Event
-      |
-Wotmed-Net Telemetry Observation
-```
+It handles application logic and database operations. The security-related additions include configured deception resources and mechanisms that detect designated interactions and generate security events.
 
-The Wotmed-Net defense layer and security middleware are registered in the backend before the application routes.
+Observed endpoint responses and generated events are documented in the Demo App evidence collection.
 
-The security middleware inspects incoming API requests for configured suspicious request signatures and can generate security telemetry when a suspicious request is detected.
+## Database
 
-## Deception Integration
+MySQL is used by the reference application to support its database operations.
 
-The backend contains a dedicated deception route group:
+The existence of the application's database does not, by itself, establish that Wotmed-Net deception events are persisted in that database. Deception-event persistence and recovery must be verified separately against the relevant implementation.
 
-```text
-/api/deception
-```
+## Adaptation for Wotmed-Net
 
-The currently implemented deception resources are:
+The existing Student Management System has been extended for controlled deception testing.
 
-| Mechanism                     | Endpoint                     | Security Event          | Response   |
-| ----------------------------- | ---------------------------- | ----------------------- | ---------- |
-| Canary                        | `/api/deception/canary`      | `canary_triggered`      | HTTP `403` |
-| Canary File                   | `/api/deception/canary-file` | `canary_file_triggered` | HTTP `403` |
-| Decoy Administrative Resource | `/api/deception/decoy-admin` | `decoy_admin_triggered` | HTTP `403` |
-| Honeytoken                    | `/api/deception/honeytoken`  | `honeytoken_triggered`  | HTTP `403` |
+The implemented and locally tested mechanisms include:
 
-These resources are designed for controlled security testing and are separate from the application's normal functional endpoints.
+- A designated honeytoken resource.
+- A canary endpoint.
+- A canary file resource.
+- A decoy administrative resource.
+- Security-event generation associated with configured deception triggers.
 
-## Security Event Generation
+The application is used to test the behavior of these resources and observe the resulting events in the available Wotmed-Net telemetry interface and SOC Dashboard.
 
-When a deception resource is triggered, the corresponding deception service creates a security event containing information such as:
+## Security Event and Telemetry Context
 
-- Event type
-- Deception resource
-- HTTP method
-- Request IP address
-- User-agent
-- Event timestamp
+Wotmed-Net telemetry provides a way to observe security-related events generated during testing.
 
-The security event is currently observable in the backend runtime through the Wotmed-Net security event logging mechanism.
+For example, a separately observed telemetry record for `POST /api/test` contained the following fields:
 
-## Normal Application Behavior
+- `incident_id`: An incident identifier.
+- `client_ip`: The recorded client address.
+- `user_agent`: The recorded client software information.
+- `path` and `method`: The request path and HTTP method.
+- `threat_score`: The score recorded for that event.
+- `action_taken`: The action recorded by the security system.
+- `triggered_flags`: The detection flags associated with the event.
+- `created_at`: The event timestamp.
 
-Normal application routes remain available alongside the deception routes.
+That record reported a threat score of `100`, the action `BLOCK_AND_REDIRECT_HONEYPOT`, and the flags `ABNORMAL_HEADER_ORDER` and `CANARY_TOKEN_TRAPPED`.
 
-For example:
+This is an example of a recorded security telemetry event. It should be treated separately from the honeytoken, canary endpoint, canary file, and decoy administrative test results. It does not establish that all deception events receive the same score, action, or flags.
 
-```text
-GET /api/departments
-```
+## Testing and Verification
 
-was verified during controlled localhost testing and returned HTTP `200`.
+Testing of the adapted reference application focuses on:
 
-This demonstrates that the addition of the deception mechanisms does not prevent normal application requests from being processed.
+1. Checking the observed HTTP responses from configured deception resources.
+2. Confirming that the expected deception event types are generated during local tests.
+3. Checking whether the events are visible in the available telemetry interface.
+4. Checking whether corresponding alerts appear in the SOC Dashboard.
+5. Separately checking normal application endpoints to identify unintended disruption.
 
-## Verification
+Screenshots and their descriptions are maintained in `demo-app/evidence/README.md`.
 
-Controlled localhost testing has verified:
+The evidence documents the behavior observed during local testing. Production readiness, complete end-to-end integration, reliable event delivery, and persistent storage must not be claimed without separate verification.
 
-- Normal application traffic continues to operate.
-- The Wotmed-Net defense and security layers are active in the backend.
-- The Canary deception resource generates `canary_triggered`.
-- The Canary File deception resource generates `canary_file_triggered`.
-- The Decoy Administrative Resource generates `decoy_admin_triggered`.
-- A valid honeytoken interaction generates `honeytoken_triggered`.
-- The four deception resources return HTTP `403 Forbidden`.
-- Wotmed-Net telemetry observations are visible in the local development environment.
+## Scope of Contribution
 
-The verified deception mechanisms are documented separately in the deception documentation.
+My contribution focuses on the **Demo App & Deception Tester** role: testing deception resources within the existing reference application, checking endpoint behavior, and verifying the visibility of related security events in the available monitoring interfaces.
 
-## Telemetry Status
-
-Local Wotmed-Net telemetry observation has been verified during controlled testing.
-
-The current development environment does not have the required Supabase credentials configured, so final cloud telemetry storage has not yet been verified.
-
-The following remain pending project integration:
-
-- Final telemetry event-schema mapping
-- Cloud telemetry storage verification
-- End-to-end telemetry delivery
-- SOC Dashboard reception and display
-- Final end-to-end integration evidence
-
-These items depend on the Wotmed-Net Backend/Telemetry and SOC Dashboard components.
-
-## Security and Testing Scope
-
-The reference application and its deception mechanisms are intended for the authorized Wotmed-Net development and testing environment.
-
-Testing is performed against the local development application using controlled requests.
-
-No real credentials, production secrets, or production data are used as deception resources.
-
+The implementation and maintenance of the wider telemetry infrastructure, database persistence pipeline, and SOC Dashboard remain separate responsibilities unless additional work and evidence establish otherwise.
