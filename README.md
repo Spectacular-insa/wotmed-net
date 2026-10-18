@@ -98,55 +98,78 @@ app.use(wotmedNet({
 
 ---
 
-## �️ Database Setup
+## 🗄️ Database Setup
 
-Wotmed-Net requires a MySQL database for persistent threat logging and IP reputation tracking.
+Wotmed-Net uses Supabase for persistent telemetry storage and incident logging.
 
 ### Environment Variables
 
 Create a `.env` file in your project root with the following variables:
 
 ```bash
-# Database Configuration
-DB_HOST=localhost
-DB_PORT=3306
-DB_USER=root
-DB_PASSWORD=your_mysql_password
-DB_NAME=wotmed_net
-
-# Optional: IP Allowlist (comma-separated)
-ALLOWLIST_IPS=127.0.0.1,::1
-
 # Server Configuration
-PORT=3000
+PORT=5000
+WS_PORT=3001
+
+# Supabase Configuration (for persistent telemetry storage)
+SUPABASE_URL=your_supabase_project_url
+SUPABASE_SECRET_KEY=your_supabase_secret_key
+
+# IP Geolocation Configuration (ipinfo.io)
+# Get your free API key from: https://ipinfo.io/signup
+# Free tier: 50,000 requests/month
+IPINFO_API_KEY=your_ipinfo_api_key
+
+# Trusted Proxy Configuration (optional)
+# Comma-separated list of trusted proxy CIDR ranges
+# Only set this if your application is behind a reverse proxy
+# Example: TRUSTED_PROXY_CIDRS=10.0.0.0/8,172.16.0.0/12
+TRUSTED_PROXY_CIDRS=
 ```
 
 ### Database Schema Setup
 
-1. Ensure MySQL is running on your system
-2. Execute the database schema script:
+1. Create a Supabase project at https://supabase.com
+2. Run the migration script in your Supabase SQL editor:
 
 ```bash
-mysql -u root -p < database/schema.sql
+# Run the geolocation migration
+cat migrations/add_geolocation_fields.sql
 ```
 
-Or manually run the SQL commands in MySQL Workbench or your preferred MySQL client:
-
-```sql
--- The script will:
--- 1. Create database 'wotmed_net'
--- 2. Create 'ip_reputations' table for tracking IP threat scores
--- 3. Create 'threat_logs' table for forensic threat logging
-```
+Or manually run the SQL commands in the Supabase SQL editor to add geolocation support to the `wotmed_incidents` table.
 
 ### Database Tables
 
-**`ip_reputations`**: Tracks IP address threat scores and blocking status
+**`wotmed_incidents`**: Stores security incident records with geolocation
 
-* `ip_address`: Primary key (supports IPv4 and IPv6)
-* `threat_score`: Current threat score (0-100+)
-* `status`: 'ACTIVE' or 'BLOCKED'
-* `last_seen`: Timestamp of last activity
+* `incident_id`: Unique incident identifier
+* `client_ip`: Source IP address of the request
+* `user_agent`: Client user agent string
+* `request_path`: Requested path
+* `request_method`: HTTP method
+* `tls_fingerprint`: TLS fingerprint
+* `threat_score`: Calculated threat score (0-100)
+* `action_taken`: Security action taken
+* `triggered_flags`: Array of triggered threat flags
+* `latitude`: Geolocation latitude (from ipinfo.io)
+* `longitude`: Geolocation longitude (from ipinfo.io)
+* `country`: Country code from geolocation
+* `city`: City name from geolocation
+* `region`: Region/state from geolocation
+* `geolocation_status`: Status of geolocation (resolved, not_public, unavailable, error)
+* `created_at`: Incident timestamp
+
+**`wotmed_honeypot_sessions`**: Stores honeypot session data
+
+* `session_id`: Unique session identifier
+* `timestamp`: Session timestamp
+* `method`: HTTP method
+* `path`: Requested path
+* `client_ip`: Source IP address
+* `threat_score`: Threat score
+* `flags`: Triggered flags
+* `status`: Session status
 
 **`threat_logs`**: Logs individual threat events for forensic analysis
 

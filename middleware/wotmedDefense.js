@@ -1,77 +1,135 @@
+
 /**
  * Wotmed-Net Master Active Defense Middleware
- * Architect: Ayitegeb Tilahun Demisie
+ * Architect: Ayitegeb Tilahun Demissie
  */
 
 const WotmedInterceptor = require('../core-engine/interceptor');
 const WotmedInspector = require('../core-engine/inspector');
 const WotmedEngine = require('../core-engine/engine');
-const WotmedTelemetry = require('../core-engine/telemetry');
+const telemetryInstance = require('../core-engine/telemetry');
+const { captureHoneypotEvent } = require('../core-engine/honeypot');
 
 class WotmedDefenseMiddleware {
   constructor() {
     this.interceptor = new WotmedInterceptor();
     this.inspector = new WotmedInspector();
     this.engine = new WotmedEngine();
-    this.telemetry = new WotmedTelemetry();
   }
 
-  // Returns the configured Express middleware stack
   handle() {
-    return async (req, res, next) => {
-      // 1. Intercept and normalize request context
+    return (req, res, next) => {
       this.interceptor.intercept(req, res, async () => {
         try {
           const requestContext = req.wotmedContext;
+          const inspectionResult =
+            this.inspector.inspect(requestContext);
 
-          // 2. Perform heuristic payload and anomaly inspection
-          const inspectionResult = this.inspector.inspect(requestContext);
-
-          // Merge inspection results into context for engine evaluation
           const evaluationInput = {
             ...requestContext,
-            ...inspectionResult
+            ...inspectionResult,
           };
 
-          // 3. Evaluate threat score and select countermeasure
-          const evaluationResult = this.engine.evaluate(evaluationInput);
+          const evaluationResult =
+            this.engine.evaluate(evaluationInput);
 
-          // 4. Dispatch asynchronous telemetry event
-          this.telemetry.emit({
-            requestContext,
-            evaluationResult
-          });
+          // Persist and broadcast the original security incident.
+          try {
+            const incidentPromise = telemetryInstance.emitIncident({
+              requestContext,
+              evaluationResult,
+            });
 
-          // 5. Enforce Countermeasures based on Evaluated Action
+            if (incidentPromise?.catch) {
+              incidentPromise.catch((error) => {
+                console.error(
+                  '[Wotmed Telemetry Dispatch Error]:',
+                  error.message || error
+                );
+              });
+            }
+          } catch (error) {
+            console.error(
+              '[Wotmed Telemetry Dispatch Error]:',
+              error.message || error
+            );
+          }
+
           switch (evaluationResult.actionTaken) {
-            case 'BLOCK_AND_REDIRECT_HONEYPOT':
-              // High risk: Return deceptive honeypot payload and terminate execution
-              return res.status(500).json({
-                error: 'Database transaction execution fault',
-                driver: 'PostgreSQL 14.2 Kernel Panic',
-                query_trace: 'ERR_SYNTAX_VIOLATION_AT_EDGE_NODE',
-                incident_ref: evaluationResult.timestamp
-              });
+            case 'BLOCK_AND_REDIRECT_HONEYPOT': {
+              let honeypotEvent;
 
-            case 'AUTONOMOUS_DYNAMIC_TARPIT':
-              // Moderate risk: Scale response latency continuously to drain attacker resources
-              const tarpitDelay = Math.floor(Math.random() * 2000) + 1000; // 1s to 3s delay
-              await new Promise(resolve => setTimeout(resolve, tarpitDelay));
-              return res.status(200).json({
-                status: 'degraded',
-                message: 'Processing queue bottlenecked. Retrying operation...',
-                gateway: 'Wotmed-Net-Tarpit-Node'
+              // Capture request metadata only, not sensitive payloads.
+              try {
+                honeypotEvent = captureHoneypotEvent({
+                  requestContext,
+                  evaluationResult,
+                });
+              } catch (error) {
+                console.error(
+                  '[Wotmed Honeypot Capture Error]:',
+                  error.message || error
+                );
+              }
+
+              // Fail closed if the honeypot capture fails.
+              if (!honeypotEvent) {
+                return res.status(403).json({
+                  error: 'Request blocked by Wotmed-Net',
+                  code: 'THREAT_BLOCKED',
+                  message:
+                    'The request was blocked by the security gateway.',
+                  incident_ref: evaluationResult.timestamp || null,
+                  monitoring: 'enabled',
+                });
+              }
+
+              // Preserve the original path and attach the captured session.
+              req.wotmedHoneypot = honeypotEvent;
+              req.wotmedOriginalUrl = req.originalUrl || req.url;
+
+              // Route internally to the dedicated decoy handler.
+              req.url = '/_wotmed/honeypot';
+              return next();
+            }
+
+            case 'AUTONOMOUS_DYNAMIC_TARPIT': {
+              const tarpitDelay =
+                Math.floor(Math.random() * 2000) + 1000;
+
+              await new Promise((resolve) =>
+                setTimeout(resolve, tarpitDelay)
+              );
+
+              if (res.headersSent || res.writableEnded) {
+                return;
+              }
+
+              return res.status(429).json({
+                status: 'delayed',
+                code: 'REQUEST_THROTTLED',
+                message:
+                  'Request delayed by the Wotmed-Net security gateway.',
+                incident_ref: evaluationResult.timestamp || null,
               });
+            }
 
             case 'MONITOR_AND_LOG_WARNING':
             case 'ALLOW_AND_INJECT_CANARY':
             default:
-              // Safe or low risk: Pass request forward to normal application controllers
               return next();
           }
-        } catch (err) {
-          console.error('[Wotmed Middleware Execution Error]:', err);
-          return next();
+        } catch (error) {
+          console.error(
+            '[Wotmed Middleware Execution Error]:',
+            error
+          );
+
+          if (res.headersSent || res.writableEnded) {
+            return;
+          }
+
+          return next(error);
         }
       });
     };

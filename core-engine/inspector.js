@@ -26,12 +26,33 @@ class WotmedInspector {
     let hasHeaderAnomaly = false;
     let canaryTokenTriggered = false;
     let hasAutomatedScanner = false;
+    let hasHoneypotPath = false;
 
     const targetString = JSON.stringify({
       path: requestContext.path,
       query: requestContext.query,
       body: requestContext.body
     });
+
+    // Check for honeypot/decoy paths
+    const honeypotPaths = [
+      '/.env',
+      '/.git',
+      '/wp-login.php',
+      '/phpmyadmin',
+      '/pma',
+      '/admin',
+      '/administrator',
+      '/config.php',
+      '/.git/config',
+      '/database.sql',
+      '/backup.sql'
+    ];
+    
+    const normalizedPath = (requestContext.path || '').toLowerCase();
+    if (honeypotPaths.some(path => normalizedPath.includes(path.toLowerCase()))) {
+      hasHoneypotPath = true;
+    }
 
     // 1. Check Payload Signatures (SQLi & XSS)
     if (this.sqlPatterns.test(targetString)) {
@@ -70,7 +91,8 @@ class WotmedInspector {
       hasXss,
       hasHeaderAnomaly,
       hasAutomatedScanner,
-      canaryTokenTriggered
+      canaryTokenTriggered,
+      hasHoneypotPath
     };
   }
 }
