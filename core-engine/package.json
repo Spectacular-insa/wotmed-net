@@ -1,0 +1,9 @@
+
+{
+  "name": "core-engine",
+  "version": "1.0.0",
+  "main": "telemetry.js",
+  "scripts": {
+    "test": "node test/simulate-traffic.js"
+  }
+}

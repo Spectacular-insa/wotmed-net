@@ -1,11 +1,17 @@
 'use client';
 
+ feature/core-engine
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useSOCStore } from '@/store/useSOCStore';
 import IncidentDetailDrawer from './IncidentDetailDrawer';
 import { getAPIClient } from '@/lib/api-client';
 import { Globe, AlertTriangle, Shield, Activity } from 'lucide-react';
+
+import { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
+import { useSOCStore } from '@/store/useSOCStore';
+ main
 
 const MapContainer = dynamic(
   () => import('react-leaflet').then((mod) => mod.MapContainer),
@@ -19,6 +25,7 @@ const Marker = dynamic(
   () => import('react-leaflet').then((mod) => mod.Marker),
   { ssr: false }
 );
+ feature/core-engine
 
 type BackendIncident = {
   incident_id: string;
@@ -60,6 +67,18 @@ export default function SOCMapInner() {
   const [incidents, setIncidents] = useState<BackendIncident[]>([]);
   const [loading, setLoading] = useState(true);
 
+const Popup = dynamic(
+  () => import('react-leaflet').then((mod) => mod.Popup),
+  { ssr: false }
+);
+
+export default function SOCMapInner() {
+  const { threats } = useSOCStore();
+  const [isClient, setIsClient] = useState(false);
+  const [mapReady, setMapReady] = useState(false);
+  const [Leaflet, setLeaflet] = useState<any>(null);
+ main
+
   useEffect(() => {
     setIsClient(true);
     import('leaflet').then((L) => {
@@ -68,6 +87,7 @@ export default function SOCMapInner() {
     });
   }, []);
 
+ feature/core-engine
   const loadIncidents = useCallback(async () => {
     try {
       const result = await getAPIClient().getThreatLogs({ limit: 100 });
@@ -135,6 +155,16 @@ export default function SOCMapInner() {
     return counts;
   }, [incidents]);
 
+
+  // Filter out threats with invalid coordinates
+  const validThreats = threats.filter(threat => {
+    const { lat, lng } = threat.location;
+    return lat !== null && lat !== undefined && lng !== null && lng !== undefined &&
+           !isNaN(lat) && !isNaN(lng) &&
+           lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+  });
+
+ main
   const createCustomIcon = (severity: string) => {
     if (!Leaflet) return null;
 
@@ -165,9 +195,12 @@ export default function SOCMapInner() {
     return (
       <div className="bg-slate-900 border border-slate-800 rounded-lg w-full h-full flex items-center justify-center">
         <div className="text-center">
+ feature/core-engine
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-slate-800 mb-4">
             <Globe className="w-6 h-6 text-slate-400 animate-pulse" />
           </div>
+
+ main
           <p className="text-slate-400">Loading threat map...</p>
         </div>
       </div>
@@ -175,6 +208,7 @@ export default function SOCMapInner() {
   }
 
   return (
+ feature/core-engine
     <div className="relative w-full h-full">
       <div className="bg-slate-900 border border-slate-800 rounded-lg w-full h-full relative overflow-hidden">
         {/* Stats Header */}
@@ -333,6 +367,58 @@ export default function SOCMapInner() {
         onClose={() => setSelectedIncident(null)}
         isOpen={selectedIncident !== null}
       />
+    <div className="bg-slate-900 border border-slate-800 rounded-lg w-full h-full relative overflow-hidden">
+      <MapContainer
+        center={[9, 40]}
+        zoom={4}
+        minZoom={2}
+        maxZoom={19}
+        style={{ height: '100%', width: '100%', background: '#030712' }}
+      >
+        <TileLayer
+          attribution="Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ"
+          url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+          maxZoom={19}
+        />
+        {validThreats.map((threat) => {
+          const icon = createCustomIcon(threat.severity);
+          if (!icon) return null;
+
+          return (
+            <Marker
+              key={threat.id}
+              position={[threat.location.lat, threat.location.lng]}
+              icon={icon}
+            >
+              <Popup>
+                <div className="p-2 bg-slate-800 text-slate-100 min-w-[200px]">
+                  <div className="mb-2">
+                    <p className="font-semibold text-sm">{threat.threatType}</p>
+                  </div>
+                  <div className="space-y-1 text-xs">
+                    <p className="text-slate-300">
+                      <span className="text-slate-400">IP:</span> {threat.ip}
+                    </p>
+                    <p className="text-slate-300">
+                      <span className="text-slate-400">Severity:</span> {threat.severity}
+                    </p>
+                    <p className="text-slate-300">
+                      <span className="text-slate-400">Score:</span> {threat.scoreDelta}
+                    </p>
+                    <p className="text-slate-300">
+                      <span className="text-slate-400">Location:</span> {threat.location.country}
+                    </p>
+                    <p className="text-slate-300">
+                      <span className="text-slate-400">Coordinates:</span> {threat.location.lat.toFixed(4)}, {threat.location.lng.toFixed(4)}
+                    </p>
+                  </div>
+                </div>
+              </Popup>
+            </Marker>
+          );
+        })}
+      </MapContainer>
+ main
     </div>
   );
 }

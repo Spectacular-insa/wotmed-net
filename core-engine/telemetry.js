@@ -5,6 +5,7 @@
  *
  * Features:
  * - Persistent incident storage in Supabase
+ feature/core-engine
  * - Persistent honeypot session storage in Supabase
  * - Historical incident loading after server restarts
  * - Refreshes database history on every dashboard poll
@@ -12,16 +13,28 @@
  * - Bounded in-memory history cache
  * - Deduplication by incident_id
  * - In-memory fallback when Supabase is unavailable
+
+ * - Historical incident loading after server restarts
+ * - Real-time incident events
+ * - Bounded in-memory history cache
+ * - Deduplication by incident_id
+ main
  */
 
 const { createClient } = require('@supabase/supabase-js');
 const EventEmitter = require('events');
 const { randomUUID } = require('crypto');
+ feature/core-engine
 const { getGeolocation } = require('./geolocation');
 
 const MAX_HISTORY = 100;
 const TABLE_NAME = 'wotmed_incidents';
 const HONEYPOT_TABLE_NAME = 'wotmed_honeypot_sessions';
+
+
+const MAX_HISTORY = 100;
+const TABLE_NAME = 'wotmed_incidents';
+ main
 
 class WotmedTelemetry extends EventEmitter {
   constructor() {
@@ -51,7 +64,9 @@ class WotmedTelemetry extends EventEmitter {
         '[Wotmed-Net Warning]: Supabase credentials missing. ' +
         'Using local in-memory telemetry.'
       );
+ feature/core-engine
 
+ main
       return;
     }
 
@@ -61,6 +76,7 @@ class WotmedTelemetry extends EventEmitter {
       '[Wotmed-Net Telemetry]: Supabase client initialized.'
     );
 
+ feature/core-engine
     // Initial history restoration.
     this.loadHistory().catch(() => {
       // The method logs the underlying error.
@@ -71,6 +87,20 @@ class WotmedTelemetry extends EventEmitter {
   /**
    * Merge records by stable incident ID.
    * Keep the newest records first and cap history at MAX_HISTORY.
+
+    // Begin restoring previously saved incidents at startup.
+    // The API endpoint will also await this operation when necessary.
+    this.loadHistory().catch(() => {
+      // The underlying method logs the error.
+      // A later history request can retry the load.
+    });
+  }
+
+  /**
+   * Merge records by stable incident ID, newest first.
+   * Existing live incidents are preserved if a history query
+   * finishes after new incidents have already arrived.
+ main
    */
   mergeHistory(records = []) {
     const unique = new Map();
@@ -80,6 +110,7 @@ class WotmedTelemetry extends EventEmitter {
         continue;
       }
 
+ feature/core-engine
       // Preserve the first copy of each stable incident ID.
       if (!unique.has(record.incident_id)) {
         unique.set(record.incident_id, record);
@@ -215,10 +246,74 @@ class WotmedTelemetry extends EventEmitter {
       );
 
       return null;
+      if (!unique.has(record.incident_id)) {
+        unique.set(record.incident_id, record);
+      }
+ main
+    }
+
+    this.history = Array.from(unique.values())
+      .sort((a, b) => {
+        const dateA = new Date(a.created_at || 0).getTime();
+        const dateB = new Date(b.created_at || 0).getTime();
+
+        return dateB - dateA;
+      })
+      .slice(0, MAX_HISTORY);
+  }
+
+  /**
+ feature/core-engine
+   * Restore saved incidents from Supabase.
+   * Concurrent requests share one history-loading operation.
+   */
+  async loadHistory() {
+    if (this.historyLoaded) {
+      return;
+    }
+
+    if (this.historyLoadPromise) {
+      return this.historyLoadPromise;
+    }
+
+    if (!this.supabase) {
+      this.historyLoaded = true;
+      return;
+    }
+
+    this.historyLoadPromise = (async () => {
+      const { data, error } = await this.supabase
+        .from(TABLE_NAME)
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(MAX_HISTORY);
+
+      if (error) {
+        console.error(
+          '[Wotmed Telemetry History Error]:',
+          error.message
+        );
+
+        throw error;
+      }
+
+      this.mergeHistory(Array.isArray(data) ? data : []);
+      this.historyLoaded = true;
+
+      console.log(
+        `[Wotmed Telemetry]: Restored ${this.history.length} historical incidents from Supabase.`
+      );
+    })();
+
+    try {
+      await this.historyLoadPromise;
+    } finally {
+      this.historyLoadPromise = null;
     }
   }
 
   /**
+ main
    * Create, broadcast, and persist a new incident.
    */
   async emitIncident(incidentData = {}) {
@@ -245,11 +340,19 @@ class WotmedTelemetry extends EventEmitter {
       ? new Date().toISOString()
       : parsedDate.toISOString();
 
+ feature/core-engine
     const clientIp = String(requestContext.clientIp || '127.0.0.1');
 
     const payload = {
       incident_id: `inc_${randomUUID()}`,
       client_ip: clientIp,
+
+    const payload = {
+      incident_id: `inc_${randomUUID()}`,
+      client_ip: String(
+        requestContext.clientIp || '127.0.0.1'
+      ),
+ main
       user_agent: String(
         requestContext.userAgent || 'UNKNOWN'
       ),
@@ -268,6 +371,7 @@ class WotmedTelemetry extends EventEmitter {
         evaluationResult.actionTaken || 'UNKNOWN'
       ),
       triggered_flags: triggeredFlags,
+ feature/core-engine
       created_at: createdAt,
       geolocation_status: 'pending',
     };
@@ -276,12 +380,25 @@ class WotmedTelemetry extends EventEmitter {
     this.mergeHistory([payload]);
     this.emit('incident', payload);
 
+
+      created_at: createdAt
+    };
+
+    // Update local history immediately.
+    this.mergeHistory([payload]);
+
+    // Broadcast the same incident ID used by the database.
+    this.emit('incident', payload);
+
+    // Persist to Supabase when configured.
+ main
     if (!this.supabase) {
       console.log(
         '[Wotmed SOC Telemetry Stream - Local Only]:',
         JSON.stringify(payload, null, 2)
       );
 
+ feature/core-engine
       // Still attempt geolocation for local mode
       getGeolocation(clientIp).then(geoResult => {
         if (geoResult && geoResult.status === 'resolved') {
@@ -306,6 +423,8 @@ class WotmedTelemetry extends EventEmitter {
         payload.geolocation_status = 'error';
       });
 
+
+ main
       return payload;
     }
 
@@ -321,6 +440,7 @@ class WotmedTelemetry extends EventEmitter {
         );
       } else {
         console.log(
+ feature/core-engine
           `[Wotmed Telemetry]: Incident ` +
           `${payload.incident_id} saved to Supabase.`
         );
@@ -395,6 +515,10 @@ class WotmedTelemetry extends EventEmitter {
               }
             });
         });
+
+          `[Wotmed Telemetry]: Incident ${payload.incident_id} saved to Supabase.`
+        );
+ main
       }
     } catch (error) {
       console.error(
@@ -403,6 +527,7 @@ class WotmedTelemetry extends EventEmitter {
           ? error.message
           : String(error)
       );
+ feature/core-engine
     }
 
     return payload;
@@ -420,11 +545,33 @@ class WotmedTelemetry extends EventEmitter {
       // Keep the dashboard usable with cached history.
     }
 
+    }
+
+    return payload;
+  }
+
+  /**
+   * Return recent incidents, restoring them from Supabase first.
+   * Callers must await this method.
+   */
+  async getHistory() {
+    try {
+      await this.loadHistory();
+    } catch {
+      // Return any available in-memory incidents if Supabase
+      // cannot be reached. loadHistory() already logged the error.
+    }
+
+ main
     return this.history.map((incident) => ({
       ...incident,
       triggered_flags: Array.isArray(incident.triggered_flags)
         ? [...incident.triggered_flags]
+ feature/core-engine
         : [],
+
+        : []
+ main
     }));
   }
 }
