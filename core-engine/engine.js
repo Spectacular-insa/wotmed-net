@@ -47,6 +47,10 @@ class WotmedEngine {
       baseScore += 30;
       flags.push('ABNORMAL_HEADER_ORDER');
     }
+    if (requestContext.hasHoneypotPath) {
+      baseScore += 60;
+      flags.push('HONEYPOT_PATH_ACCESS');
+    }
 
     if (requestContext.tlsFingerprintMismatch) {
       baseScore += 90;

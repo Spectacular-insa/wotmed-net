@@ -9,11 +9,41 @@ class WotmedInterceptor {
     this.rateLimits = new Map();
   }
 
+  extractClientIp(req) {
+    // Default to socket remote address (source of truth for direct connections)
+    let ip = req.socket.remoteAddress;
+
+    // If behind a trusted proxy, parse X-Forwarded-For
+    // Only trust if TRUSTED_PROXY_CIDRS is configured
+    const trustedProxies = process.env.TRUSTED_PROXY_CIDRS;
+    if (trustedProxies && req.headers['x-forwarded-for']) {
+      const forwardedFor = req.headers['x-forwarded-for'];
+      // X-Forwarded-For can contain multiple IPs: client, proxy1, proxy2
+      // The leftmost is the original client
+      const ips = forwardedFor.split(',').map(s => s.trim());
+      if (ips.length > 0) {
+        ip = ips[0];
+      }
+    }
+
+    // Normalize IPv4-mapped IPv6 addresses (::ffff:x.x.x.x -> x.x.x.x)
+    if (ip && ip.startsWith('::ffff:')) {
+      ip = ip.substring(7);
+    }
+
+    // Handle undefined/null
+    if (!ip) {
+      ip = '127.0.0.1';
+    }
+
+    return ip;
+  }
+
   intercept(req, res, next) {
     const startTime = process.hrtime();
 
     // 1. Extract Raw Headers, IP, Query Parameters, and Body
-    const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '0.0.0.0';
+    const clientIp = this.extractClientIp(req);
     const userAgent = req.headers['user-agent'] || 'UNKNOWN';
     const path = req.originalUrl || req.url;
     const method = req.method;

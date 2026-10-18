@@ -5,9 +5,13 @@ export default function SettingsPage() {
         <h2 className="text-lg font-semibold text-slate-100 mb-4">Settings</h2>
         <div className="space-y-4">
           <div>
+ feature/core-engine
+            <label className="block text-sm text-slate-400 mb-2">Manual IP Block</label>
+
             <label className="block text-sm text-slate-400 mb-2">
               Manual IP Block
             </label>
+ main
             <div className="flex gap-2">
               <input
                 type="text"
@@ -20,9 +24,13 @@ export default function SettingsPage() {
             </div>
           </div>
           <div>
+ feature/core-engine
+            <label className="block text-sm text-slate-400 mb-2">Search Threats</label>
+
             <label className="block text-sm text-slate-400 mb-2">
               Search Threats
             </label>
+ main
             <input
               type="text"
               placeholder="Search by IP, threat type, or hash..."
@@ -30,6 +38,12 @@ export default function SettingsPage() {
             />
           </div>
           <div className="bg-slate-800 rounded-lg p-4">
+ feature/core-engine
+            <h3 className="text-sm font-medium text-slate-300 mb-2">API Configuration</h3>
+            <div className="space-y-2 text-xs text-slate-400">
+              <p>API URL: {process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'}</p>
+              <p>WebSocket URL: {process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001'}</p>
+
             <h3 className="text-sm font-medium text-slate-300 mb-2">
               API Configuration
             </h3>
@@ -42,6 +56,7 @@ export default function SettingsPage() {
                 WebSocket URL:{" "}
                 {process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:5001"}
               </p>
+ main
             </div>
           </div>
         </div>

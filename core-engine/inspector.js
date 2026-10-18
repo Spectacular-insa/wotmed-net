@@ -31,14 +31,51 @@ class WotmedInspector {
   }
 
   inspect(requestContext) {
+ feature/core-engine
+    let hasSqlInjection = false;
+    let hasXss = false;
+    let hasHeaderAnomaly = false;
+    let canaryTokenTriggered = false;
+    let hasAutomatedScanner = false;
+    let hasHoneypotPath = false;
+
+=======
+ main
     const targetString = JSON.stringify({
       path: requestContext.path,
       query: requestContext.query,
       body: requestContext.body
     });
 
+ feature/core-engine
+    // Check for honeypot/decoy paths
+    const honeypotPaths = [
+      '/.env',
+      '/.git',
+      '/wp-login.php',
+      '/phpmyadmin',
+      '/pma',
+      '/admin',
+      '/administrator',
+      '/config.php',
+      '/.git/config',
+      '/database.sql',
+      '/backup.sql'
+    ];
+    
+    const normalizedPath = (requestContext.path || '').toLowerCase();
+    if (honeypotPaths.some(path => normalizedPath.includes(path.toLowerCase()))) {
+      hasHoneypotPath = true;
+    }
+
+    // 1. Check Payload Signatures (SQLi & XSS)
+    if (this.sqlPatterns.test(targetString)) {
+      hasSqlInjection = true;
+    }
+
     const headers = requestContext.headers || {};
     const userAgent = headers['user-agent'] || '';
+ main
 
     const hasSqlInjection = this.sqlPatterns.test(targetString);
     const hasXss = this.xssPatterns.test(targetString);
@@ -64,7 +101,8 @@ class WotmedInspector {
       hasPathTraversal,
       hasSSRF,
       hasAutomatedScanner,
-      canaryTokenTriggered
+      canaryTokenTriggered,
+      hasHoneypotPath
     };
   }
 }
