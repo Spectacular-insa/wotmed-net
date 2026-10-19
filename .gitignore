@@ -4,7 +4,7 @@ node_modules/
 *.log
 dist/
 build/
-
+.env.example
 # Dependencies — ignore node_modules in every directory
 node_modules/
 **/node_modules/
